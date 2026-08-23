@@ -163,7 +163,7 @@ class App(ctk.CTk):
         
         self.entries = {}
         row_idx = 1
-        for key in ["TWITCH_CHANNEL", "TWITCH_OAUTH_TOKEN", "TWITCH_CLIENT_ID", "TWITCH_CLIENT_SECRET", "TARGET_GAME", "SCAN_INTERVAL", "EVENT_COOLDOWN", "USE_OLLAMA"]:
+        for key in ["TWITCH_CHANNEL", "TWITCH_OAUTH_TOKEN", "TWITCH_CLIENT_ID", "TWITCH_CLIENT_SECRET", "TARGET_GAME", "SCAN_INTERVAL", "EVENT_COOLDOWN", "POE_LOG_PATH", "WOW_COMBAT_LOG_PATH", "WOW_CHAT_LOG_PATH", "USE_OLLAMA"]:
             lbl = ctk.CTkLabel(self.frames["settings"], text=key)
             lbl.grid(row=row_idx, column=0, padx=20, pady=10, sticky="w")
             

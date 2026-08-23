@@ -1,0 +1,465 @@
+﻿diff --git a/.scratch/log-integration/issues/01-poe-logs.md b/.scratch/log-integration/issues/01-poe-logs.md
+new file mode 100644
+index 0000000..5a68a43
+--- /dev/null
++++ b/.scratch/log-integration/issues/01-poe-logs.md
+@@ -0,0 +1,6 @@
++Status: unclaimed
++Type: research
++
++## Question
++
++What exact events are logged in Path of Exile 1 and 2's `Client.txt`? We need to know if it captures deaths, level ups, boss kills, and high-value drops, and what the regex/format looks like for each.
+diff --git a/.scratch/log-integration/issues/02-wow-logs.md b/.scratch/log-integration/issues/02-wow-logs.md
+new file mode 100644
+index 0000000..aaef83c
+--- /dev/null
++++ b/.scratch/log-integration/issues/02-wow-logs.md
+@@ -0,0 +1,6 @@
++Status: unclaimed
++Type: research
++
++## Question
++
++What is the exact format of World of Warcraft's `/combatlog` and `/chatlog`? Specifically, how do we parse player deaths, achievement unlocks, level ups, and epic loot drops from the raw text lines?
+diff --git a/.scratch/log-integration/issues/03-log-watcher.md b/.scratch/log-integration/issues/03-log-watcher.md
+new file mode 100644
+index 0000000..7eef98a
+--- /dev/null
++++ b/.scratch/log-integration/issues/03-log-watcher.md
+@@ -0,0 +1,7 @@
++Status: claimed (Agent)
++Type: task
++Blocked by: 01, 02
++
++## Question
++
++Implement an asynchronous `LogWatcher` module that can tail multiple log files (PoE and WoW), parse the incoming lines based on the regexes found in the research tickets, and yield standardized `(event_id, context)` tuples to the `AppRunner`.
+diff --git a/.scratch/log-integration/issues/04-hybrid-integration.md b/.scratch/log-integration/issues/04-hybrid-integration.md
+new file mode 100644
+index 0000000..7066a7f
+--- /dev/null
++++ b/.scratch/log-integration/issues/04-hybrid-integration.md
+@@ -0,0 +1,6 @@
++Status: unclaimed
++Type: grilling
++
++## Question
++
++Now that `LogWatcher` exists, how do we integrate it into `main.py` alongside `OCRScanner`? Specifically, if both detect a "poe2_death" event (the log will see "You have been slain" and OCR will see "Resurrect in town"), how do we prevent the bot from reacting twice?
+diff --git a/.scratch/log-integration/issues/05-app-integration.md b/.scratch/log-integration/issues/05-app-integration.md
+new file mode 100644
+index 0000000..0347c66
+--- /dev/null
++++ b/.scratch/log-integration/issues/05-app-integration.md
+@@ -0,0 +1,6 @@
++Status: unclaimed
++Type: task
++
++## Question
++
++Now that we know *how* to integrate (using natural engine cooldowns for deduplication), write the code to run the `LogWatcher` inside `main.py`'s `run_app()` concurrent loop alongside the `OCRScanner`. Then, expose the log file paths (PoE, WoW Combat, WoW Chat) in `gui.py` so the user can easily configure them.
+diff --git a/.scratch/log-integration/issues/06-ollama-context.md b/.scratch/log-integration/issues/06-ollama-context.md
+new file mode 100644
+index 0000000..bb4fd41
+--- /dev/null
++++ b/.scratch/log-integration/issues/06-ollama-context.md
+@@ -0,0 +1,6 @@
++Status: claimed (Agent)
++Type: task
++
++## Question
++
++Now that `LogWatcher` returns rich context like `wow_loot: 'Player looted [Thunderfury]'` and `wow_achievement: 'Player earned [Realm First]'`, we need to actually inject this dynamic context into the Ollama prompt in `reaction_engine.py` so the bot can generate a hyper-specific, contextual roast. Update `reaction_engine.py` to use the `ocr_context` parameter natively in its Ollama system prompt.
+diff --git a/.scratch/log-integration/map.md b/.scratch/log-integration/map.md
+new file mode 100644
+index 0000000..2e874b0
+--- /dev/null
++++ b/.scratch/log-integration/map.md
+@@ -0,0 +1,30 @@
++Status: resolved
++Labels: wayfinder:map
++
++## Destination
++
++A hybrid event detection system that combines visual OCR with native game log tailing (PoE `Client.txt` and WoW `/combatlog`) to extract high-fidelity context for chat reactions.
++
++## Notes
++
++- Domain: Game Log Parsing, File Tailing, Hybrid Event Dispatching.
++- Preferences: Rely on native logs over addons. Fallback to OCR only when logs lack the event.
++- Skills: `research`, `domain-modeling`.
++
++## Decisions so far
++
++- [01-poe-logs](file:///c:/Users/matt1/Downloads/Twitch%20OCR%20Chatbot/.scratch/log-integration/issues/01-poe-logs.md): PoE natively logs deaths, level ups, and areas, but NOT drops or boss kills. Regex captured in research.
++- [02-wow-logs](file:///c:/Users/matt1/Downloads/Twitch%20OCR%20Chatbot/.scratch/log-integration/issues/02-wow-logs.md): WoW logs everything cleanly via combat/chat logs, but the chat log buffers. Regex captured in research.
++- [03-log-watcher](file:///c:/Users/matt1/Downloads/Twitch%20OCR%20Chatbot/.scratch/log-integration/issues/03-log-watcher.md): Implemented async file-tailing module parsing PoE and WoW regexes.
++- [04-hybrid-integration](file:///c:/Users/matt1/Downloads/Twitch%20OCR%20Chatbot/.scratch/log-integration/issues/04-hybrid-integration.md): Resolved. Rely on existing `ReactionEngine` cooldowns to naturally de-duplicate identical events fired by both Log and OCR scanners.
++- [05-app-integration](file:///c:/Users/matt1/Downloads/Twitch%20OCR%20Chatbot/.scratch/log-integration/issues/05-app-integration.md): Added `LogWatcher` async loop to `main.py` and exposed the three log file paths in `gui.py` settings.
++- [06-ollama-context](file:///c:/Users/matt1/Downloads/Twitch%20OCR%20Chatbot/.scratch/log-integration/issues/06-ollama-context.md): Updated Ollama prompt to explicitly roast item names, achievements, or boss names if they exist in the context string.
++
++## Not yet specified
++
++*(Empty)*
++
++## Out of scope
++
++- Building custom WoW Lua addons.
++- Reading game memory directly.
+diff --git a/.scratch/log-integration/research/poe-logs.md b/.scratch/log-integration/research/poe-logs.md
+new file mode 100644
+index 0000000..22b20ce
+--- /dev/null
++++ b/.scratch/log-integration/research/poe-logs.md
+@@ -0,0 +1,40 @@
++# Path of Exile Client.txt Research
++
++## Log File Location and Basics
++- **PoE 1 & 2 Log Location:** Typically located at `[Install Directory]/logs/Client.txt` (e.g., `C:\Program Files (x86)\Steam\steamapps\common\Path of Exile\logs\Client.txt`). Both PoE 1 and PoE 2 use the same general file and structure.
++- **Log Structure:** 
++  `<Date> <Time> <Internal_ID> <Internal_Hex> [<Log_Level> <Logger> <PID>] : <Message>`
++  *Example:* `2020/10/12 22:39:44 2316728953 ba9 [INFO Client 7124] : You have entered Desert Hideout.`
++
++## Captured Events
++
++### 1. Deaths
++- **Logged?** Yes, but informally. 
++- **Details:** The game client logs a message when the player is slain, often outputting `"You have been slain"` or `"Player died"`. However, it does **not** log damage recaps, the specific source of damage, or your character's level at the time of death. 
++
++### 2. Level Ups
++- **Logged?** Yes. 
++- **Details:** The client logs when a player reaches a new level, usually with the phrase `"is now level X"`.
++
++### 3. Boss Kills
++- **Logged?** Not explicitly. There is no standard structured log for defeating a boss. Some boss encounters might trigger NPC dialogue or quest updates that appear in the log, but parsing this would be highly specific to individual encounters.
++
++### 4. Drops
++- **Logged?** **No.**
++- **Details:** The `Client.txt` file does **not** explicitly log item drops, currency, or high-value loot. Tools that track player wealth typically rely on the official Path of Exile Stash Tab API, not the local text log.
++
++### 5. Chat, Trade, and Areas
++- **Logged?** Yes. Area transitions (e.g., `"You have entered..."`) and all chat/whisper messages are fully logged. This is how many trade companion apps function.
++
++## Regex Parsing Patterns
++
++**Full Line Capture Pattern (Extracts timestamp, PID, and message):**
++```regex
++^(?P<date>\d{4}/\d{2}/\d{2})\s+(?P<time>\d{2}:\d{2}:\d{2})\s+\d+\s+\w+\s+\[\w+\s+\w+\s+(?P<pid>\d+)\]\s+:\s+(?P<message>.*)$
++```
++
++**Specific Event Matching (Applied to the extracted `<message>` string):**
++- **Death:** `(?i)you have been slain|player died`
++- **Level Up:** `(?i)is now level (?P<level>\d+)`
++- **Area Change:** `(?i)you have entered (?P<area>.*)\.`
++```
+diff --git a/.scratch/log-integration/research/wow-logs.md b/.scratch/log-integration/research/wow-logs.md
+new file mode 100644
+index 0000000..51dd3e2
+--- /dev/null
++++ b/.scratch/log-integration/research/wow-logs.md
+@@ -0,0 +1,62 @@
++# World of Warcraft Log Parsing
++
++World of Warcraft outputs logging to two separate files (which can be toggled in-game via `/combatlog` and `/chatlog`). The files are located in the `_retail_/Logs/` (or `_classic_/Logs/`) directory.
++
++## 1. Combat Log (`WoWCombatLog.txt`)
++The Combat Log captures detailed, structured gameplay data (damage, healing, auras, deaths) in a comma-separated format. It's the best place to reliably parse **Player Deaths**. (Note: Advanced Combat Logging should be enabled in System > Network settings for precise data).
++
++### Player Deaths (`UNIT_DIED`)
++Death events have the `UNIT_DIED` event type. The format of the line is:
++`TIMESTAMP  EVENT_TYPE,SourceGUID,SourceName,SourceFlags,SourceRaidFlags,DestGUID,DestName,DestFlags,DestRaidFlags`
++
++**Raw Example Line:**
++`4/15 20:31:25.123  UNIT_DIED,0000000000000000,nil,0x80000000,0x80000000,Player-970-00000123,Leeroy,0x511,0x0`
++
++**Regex for Parsing Player Deaths:**
++To distinguish player deaths from NPC/pet deaths, we look for `Player-` in the `DestGUID`.
++
++```regex
++^(\d{1,2}\/\d{1,2}\s\d{2}:\d{2}:\d{2}\.\d{3})\s+UNIT_DIED,.*?,.*?,.*?,.*?,(Player-[^,]+),([^,]+),
++```
++*   **Group 1:** Timestamp
++*   **Group 2:** Target GUID (e.g., `Player-970-00000123`)
++*   **Group 3:** Target Name (e.g., `Leeroy`)
++
++---
++
++## 2. Chat Log (`WoWChatLog.txt`)
++The Chat Log is a plain-text capture of what appears in the user's chat box, prepended with a timestamp. It is the best place to parse **Achievements, Level Ups, and Epic Loot Drops**. 
++
++**Important Note:** The Chat Log formatting is highly dependent on game localization/language, and link codes (like `|H...|h`) are injected for items and achievements.
++
++### Achievement Unlocks
++Achievements are broadcasted in chat with clickable link formatting.
++**Regex:**
++```regex
++^(\d{1,2}\/\d{1,2}\s\d{2}:\d{2}:\d{2}\.\d{3})\s+(.*?)\s+has earned the achievement\s+\|Hachievement:\d+:.*?\|h\[(.*?)\]\|h
++```
++*(Note: System messages might omit the player name and just say `[Achievement Name] earned.`, but player broadcasts look like above. A generic fallback capturing the `|Hachievement:` block is recommended.)*
++
++### Level Ups
++Level up broadcasts are localized plain-text messages.
++**Regex (English):**
++```regex
++^(\d{1,2}\/\d{1,2}\s\d{2}:\d{2}:\d{2}\.\d{3})\s+(.*?)\s+has reached level\s+(\d+)!
++```
++
++### Epic Loot Drops
++Loot is logged similarly in the chat file. The game wraps the item in a clickable `|Hitem:...|h` string. To specifically find *Epic* loot, one could theoretically parse the item ID from the string, but standard regex captures any loot matching this pattern.
++
++**Regex (Self / "You receive"):**
++```regex
++^(\d{1,2}\/\d{1,2}\s\d{2}:\d{2}:\d{2}\.\d{3})\s+You receive loot:\s+\|Hitem:\d+:.*?\|h\[(.*?)\]\|h
++```
++
++**Regex (Other Players):**
++```regex
++^(\d{1,2}\/\d{1,2}\s\d{2}:\d{2}:\d{2}\.\d{3})\s+(.*?)\s+receives loot:\s+\|Hitem:\d+:.*?\|h\[(.*?)\]\|h
++```
++
++### Important Parser Considerations
++1.  **Buffering:** While `WoWCombatLog.txt` streams relatively quickly, `WoWChatLog.txt` is known to buffer and sometimes only flushes when the user logs out or reloads their UI. If tailing for real-time Twitch alerts, be aware of this limitation.
++2.  **Pipes and Brackets:** The `|H...|h` links contain internal IDs. The regex groups above are designed to capture the human-readable text inside the `[...]` brackets. 
+diff --git a/config.py b/config.py
+index fddc309..19bffe8 100644
+--- a/config.py
++++ b/config.py
+@@ -17,6 +17,11 @@ class Config:
+     SCAN_INTERVAL = float(os.getenv("SCAN_INTERVAL", "1.0"))
+     EVENT_COOLDOWN = float(os.getenv("EVENT_COOLDOWN", "30.0"))
+     
++    # Log File Paths
++    POE_LOG_PATH = os.getenv("POE_LOG_PATH", "")
++    WOW_COMBAT_LOG_PATH = os.getenv("WOW_COMBAT_LOG_PATH", "")
++    WOW_CHAT_LOG_PATH = os.getenv("WOW_CHAT_LOG_PATH", "")
++    
+     USE_OLLAMA = os.getenv("USE_OLLAMA", "False").lower() in ("true", "1", "yes")
+     OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3:8b")
+     OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434/api/generate")
+diff --git a/gui.py b/gui.py
+index 6cd2bf4..f5dc51a 100644
+--- a/gui.py
++++ b/gui.py
+@@ -163,15 +163,36 @@ class App(ctk.CTk):
+         
+         self.entries = {}
+         row_idx = 1
+-        for key in ["TWITCH_CHANNEL", "TWITCH_OAUTH_TOKEN", "TWITCH_CLIENT_ID", "TWITCH_CLIENT_SECRET", "TARGET_GAME", "SCAN_INTERVAL", "EVENT_COOLDOWN", "USE_OLLAMA"]:
++        for key in ["TWITCH_CHANNEL", "TWITCH_OAUTH_TOKEN", "TWITCH_CLIENT_ID", "TWITCH_CLIENT_SECRET", "TARGET_GAME", "SCAN_INTERVAL", "EVENT_COOLDOWN", "POE_LOG_PATH", "WOW_COMBAT_LOG_PATH", "WOW_CHAT_LOG_PATH", "USE_OLLAMA"]:
+             lbl = ctk.CTkLabel(self.frames["settings"], text=key)
+             lbl.grid(row=row_idx, column=0, padx=20, pady=10, sticky="w")
+             
+             # Use password masking for sensitive fields
+             show_char = "*" if "TOKEN" in key or "SECRET" in key else ""
+-            ent = ctk.CTkEntry(self.frames["settings"], width=400, show=show_char)
+-            ent.insert(0, os.getenv(key, ""))
+-            ent.grid(row=row_idx, column=1, padx=20, pady=10, sticky="ew")
++            
++            # If it's a path setting, create a frame to hold the entry and a browse button
++            if key.endswith("_PATH"):
++                frame = ctk.CTkFrame(self.frames["settings"], fg_color="transparent")
++                frame.grid(row=row_idx, column=1, padx=20, pady=10, sticky="ew")
++                frame.grid_columnconfigure(0, weight=1)
++                
++                ent = ctk.CTkEntry(frame, width=300, show=show_char)
++                ent.insert(0, os.getenv(key, ""))
++                ent.grid(row=0, column=0, sticky="ew")
++                
++                def browse_file(target_ent=ent):
++                    filepath = ctk.filedialog.askopenfilename()
++                    if filepath:
++                        target_ent.delete(0, "end")
++                        target_ent.insert(0, filepath)
++                        
++                btn_browse = ctk.CTkButton(frame, text="Browse...", width=80, command=browse_file)
++                btn_browse.grid(row=0, column=1, padx=(10, 0))
++            else:
++                ent = ctk.CTkEntry(self.frames["settings"], width=400, show=show_char)
++                ent.insert(0, os.getenv(key, ""))
++                ent.grid(row=row_idx, column=1, padx=20, pady=10, sticky="ew")
++                
+             self.entries[key] = ent
+             row_idx += 1
+             
+diff --git a/log_watcher.py b/log_watcher.py
+new file mode 100644
+index 0000000..112f27a
+--- /dev/null
++++ b/log_watcher.py
+@@ -0,0 +1,102 @@
++import asyncio
++import os
++import re
++import logging
++
++logger = logging.getLogger(__name__)
++
++class LogWatcher:
++    def __init__(self, config):
++        self.config = config
++        
++        # PoE Patterns
++        self.poe_base_pattern = re.compile(r"^\d{4}/\d{2}/\d{2}\s+\d{2}:\d{2}:\d{2}\s+\d+\s+\w+\s+\[\w+\s+\w+\s+\d+\]\s+:\s+(.*)$")
++        self.poe_death = re.compile(r"(?i)you have been slain|player died")
++        self.poe_level = re.compile(r"(?i)is now level (\d+)")
++        self.poe_area = re.compile(r"(?i)you have entered (.*?)\.")
++        
++        # WoW Patterns
++        self.wow_death = re.compile(r"^\d{1,2}\/\d{1,2}\s\d{2}:\d{2}:\d{2}\.\d{3}\s+UNIT_DIED,.*?,.*?,.*?,.*?,(Player-[^,]+),([^,]+),")
++        self.wow_achiev = re.compile(r"^\d{1,2}\/\d{1,2}\s\d{2}:\d{2}:\d{2}\.\d{3}\s+(.*?)\s+has earned the achievement\s+\|Hachievement:\d+:.*?\|h\[(.*?)\]\|h")
++        self.wow_level = re.compile(r"^\d{1,2}\/\d{1,2}\s\d{2}:\d{2}:\d{2}\.\d{3}\s+(.*?)\s+has reached level\s+(\d+)!")
++        self.wow_loot = re.compile(r"^\d{1,2}\/\d{1,2}\s\d{2}:\d{2}:\d{2}\.\d{3}\s+(You|.*?)\s+(?:receive|receives) loot:\s+\|Hitem:\d+:.*?\|h\[(.*?)\]\|h")
++
++    async def watch(self):
++        """Asynchronous generator yielding (event_id, context) tuples."""
++        files_to_watch = []
++        
++        if self.config.POE_LOG_PATH and os.path.exists(self.config.POE_LOG_PATH):
++            f = open(self.config.POE_LOG_PATH, 'r', encoding='utf-8', errors='replace')
++            f.seek(0, 2) # jump to end
++            files_to_watch.append({'file': f, 'type': 'poe'})
++            logger.info(f"Tailing PoE Log: {self.config.POE_LOG_PATH}")
++            
++        if self.config.WOW_COMBAT_LOG_PATH and os.path.exists(self.config.WOW_COMBAT_LOG_PATH):
++            f = open(self.config.WOW_COMBAT_LOG_PATH, 'r', encoding='utf-8', errors='replace')
++            f.seek(0, 2)
++            files_to_watch.append({'file': f, 'type': 'wow_combat'})
++            logger.info(f"Tailing WoW Combat Log: {self.config.WOW_COMBAT_LOG_PATH}")
++            
++        if self.config.WOW_CHAT_LOG_PATH and os.path.exists(self.config.WOW_CHAT_LOG_PATH):
++            f = open(self.config.WOW_CHAT_LOG_PATH, 'r', encoding='utf-8', errors='replace')
++            f.seek(0, 2)
++            files_to_watch.append({'file': f, 'type': 'wow_chat'})
++            logger.info(f"Tailing WoW Chat Log: {self.config.WOW_CHAT_LOG_PATH}")
++
++        if not files_to_watch:
++            logger.warning("No log files configured or found. LogWatcher is idle.")
++            while True:
++                await asyncio.sleep(60) # Just sleep indefinitely to not break the app runner
++
++        try:
++            while True:
++                for watcher in files_to_watch:
++                    line = watcher['file'].readline()
++                    if not line:
++                        continue
++                        
++                    event = self._parse_line(line.strip(), watcher['type'])
++                    if event:
++                        yield event
++                        
++                await asyncio.sleep(0.1)
++        finally:
++            for watcher in files_to_watch:
++                watcher['file'].close()
++
++    def _parse_line(self, line, log_type):
++        if log_type == 'poe':
++            match = self.poe_base_pattern.match(line)
++            if not match: return None
++            msg = match.group(1)
++            
++            if self.poe_death.search(msg):
++                return ("poe2_death", "Player died") # mapped to our existing ollama prompt key
++            
++            lvl_match = self.poe_level.search(msg)
++            if lvl_match:
++                return ("poe2_level_up", f"Level {lvl_match.group(1)}")
++                
++            area_match = self.poe_area.search(msg)
++            if area_match:
++                return ("poe_area_change", area_match.group(1))
++                
++        elif log_type == 'wow_combat':
++            death_match = self.wow_death.match(line)
++            if death_match:
++                return ("wow_death", f"{death_match.group(2)} died")
++                
++        elif log_type == 'wow_chat':
++            achiev_match = self.wow_achiev.match(line)
++            if achiev_match:
++                return ("wow_achievement", f"{achiev_match.group(1)} earned {achiev_match.group(2)}")
++                
++            lvl_match = self.wow_level.match(line)
++            if lvl_match:
++                return ("wow_level_up", f"{lvl_match.group(1)} reached level {lvl_match.group(2)}")
++                
++            loot_match = self.wow_loot.match(line)
++            if loot_match:
++                return ("wow_loot", f"{loot_match.group(1)} looted {loot_match.group(2)}")
++                
++        return None
+diff --git a/main.py b/main.py
+index ccc3f2d..446ebd1 100644
+--- a/main.py
++++ b/main.py
+@@ -4,6 +4,7 @@ from twitchio.ext import commands
+ from config import Config
+ from reaction_engine import ReactionEngine
+ from ocr_scanner import OCRScanner
++from log_watcher import LogWatcher
+ 
+ import sys
+ from logging.handlers import RotatingFileHandler
+@@ -122,6 +123,7 @@ async def run_app():
+     """Core Application Runner orchestrating the Scanner, Engine, and Twitch Bot."""
+     engine = ReactionEngine()
+     scanner = OCRScanner()
++    log_watcher = LogWatcher(Config)
+     bot = TwitchOCRBot(engine)
+     
+     async def scan_loop():
+@@ -135,7 +137,7 @@ async def run_app():
+                 detected_events = scanner.scan()
+                 
+                 for event_id, text_context in detected_events:
+-                    logger.info(f"Event Detected: {event_id} - Context: {text_context.strip()}")
++                    logger.info(f"[OCR] Event Detected: {event_id} - Context: {text_context.strip()}")
+                     
+                     # Generate reaction (engine handles cooldown internally and returns None if blocked)
+                     reaction_msg = engine.get_reaction(event_id, text_context)
+@@ -145,10 +147,23 @@ async def run_app():
+                         
+             await asyncio.sleep(Config.SCAN_INTERVAL)
+ 
+-    # Run the Twitch bot connection and the OCR scanning loop concurrently
++    async def log_watch_loop():
++        logger.info("Started Native Game Log Tailing Loop")
++        await bot.wait_for_ready()
++        
++        async for event_id, text_context in log_watcher.watch():
++            if bot.is_scanning:
++                logger.info(f"[LOG] Event Detected: {event_id} - Context: {text_context.strip()}")
++                
++                reaction_msg = engine.get_reaction(event_id, text_context)
++                if reaction_msg:
++                    await bot.send_chat_message(Config.TWITCH_CHANNEL, reaction_msg)
++
++    # Run the Twitch bot connection, OCR loop, and Log loop concurrently
+     await asyncio.gather(
+         bot.start(),
+-        scan_loop()
++        scan_loop(),
++        log_watch_loop()
+     )
+ 
+ if __name__ == "__main__":
+diff --git a/reaction_engine.py b/reaction_engine.py
+index 02d2cba..1f52b13 100644
+--- a/reaction_engine.py
++++ b/reaction_engine.py
+@@ -207,9 +207,10 @@ class ReactionEngine:
+     def _generate_ollama_reaction(self, event_id: str, ocr_context: str) -> str:
+         prompt = (
+             f"You are a Twitch chat bot watching a streamer play a game. "
+-            f"The streamer just triggered this event: '{event_id}'. "
+-            f"The screen currently says: '{ocr_context}'. "
+-            f"Write a short, funny, natural Twitch chat reaction (1-10 words). Don't use quotes."
++            f"The streamer just triggered the event '{event_id}'. "
++            f"The exact game context is: '{ocr_context}'. "
++            f"Write a short, funny, natural Twitch chat reaction (1-15 words). "
++            f"If the context contains an item name, achievement, or boss name, make sure to mention or roast it! Don't use quotes."
+         )
+ 
+         payload = {

@@ -17,6 +17,11 @@ class Config:
     SCAN_INTERVAL = float(os.getenv("SCAN_INTERVAL", "1.0"))
     EVENT_COOLDOWN = float(os.getenv("EVENT_COOLDOWN", "30.0"))
     
+    # Log File Paths
+    POE_LOG_PATH = os.getenv("POE_LOG_PATH", "")
+    WOW_COMBAT_LOG_PATH = os.getenv("WOW_COMBAT_LOG_PATH", "")
+    WOW_CHAT_LOG_PATH = os.getenv("WOW_CHAT_LOG_PATH", "")
+    
     USE_OLLAMA = os.getenv("USE_OLLAMA", "False").lower() in ("true", "1", "yes")
     OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3:8b")
     OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434/api/generate")

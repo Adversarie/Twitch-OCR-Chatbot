@@ -4,6 +4,7 @@ from twitchio.ext import commands
 from config import Config
 from reaction_engine import ReactionEngine
 from ocr_scanner import OCRScanner
+from log_watcher import LogWatcher
 
 import sys
 from logging.handlers import RotatingFileHandler
@@ -122,8 +123,18 @@ async def run_app():
     """Core Application Runner orchestrating the Scanner, Engine, and Twitch Bot."""
     engine = ReactionEngine()
     scanner = OCRScanner()
+    log_watcher = LogWatcher(Config)
     bot = TwitchOCRBot(engine)
     
+    async def handle_event(event_id, text_context, source="OCR"):
+        if not bot.is_scanning:
+            return
+            
+        logger.info(f"[{source}] Event Detected: {event_id} - Context: {text_context.strip()}")
+        reaction_msg = engine.get_reaction(event_id, text_context)
+        if reaction_msg:
+            await bot.send_chat_message(Config.TWITCH_CHANNEL, reaction_msg)
+
     async def scan_loop():
         logger.info("Started OCR Scanning Loop")
         await bot.wait_for_ready()
@@ -135,20 +146,22 @@ async def run_app():
                 detected_events = scanner.scan()
                 
                 for event_id, text_context in detected_events:
-                    logger.info(f"Event Detected: {event_id} - Context: {text_context.strip()}")
-                    
-                    # Generate reaction (engine handles cooldown internally and returns None if blocked)
-                    reaction_msg = engine.get_reaction(event_id, text_context)
-                    
-                    if reaction_msg:
-                        await bot.send_chat_message(Config.TWITCH_CHANNEL, reaction_msg)
+                    await handle_event(event_id, text_context, "OCR")
                         
             await asyncio.sleep(Config.SCAN_INTERVAL)
 
-    # Run the Twitch bot connection and the OCR scanning loop concurrently
+    async def log_watch_loop():
+        logger.info("Started Native Game Log Tailing Loop")
+        await bot.wait_for_ready()
+        
+        async for event_id, text_context in log_watcher.watch():
+            await handle_event(event_id, text_context, "LOG")
+
+    # Run the Twitch bot connection, OCR loop, and Log loop concurrently
     await asyncio.gather(
         bot.start(),
-        scan_loop()
+        scan_loop(),
+        log_watch_loop()
     )
 
 if __name__ == "__main__":

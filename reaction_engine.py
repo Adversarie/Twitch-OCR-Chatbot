@@ -207,9 +207,10 @@ class ReactionEngine:
     def _generate_ollama_reaction(self, event_id: str, ocr_context: str) -> str:
         prompt = (
             f"You are a Twitch chat bot watching a streamer play a game. "
-            f"The streamer just triggered this event: '{event_id}'. "
-            f"The screen currently says: '{ocr_context}'. "
-            f"Write a short, funny, natural Twitch chat reaction (1-10 words). Don't use quotes."
+            f"The streamer just triggered the event '{event_id}'. "
+            f"The exact game context is: '{ocr_context}'. "
+            f"Write a short, funny, natural Twitch chat reaction (1-10 words). "
+            f"If the context contains an item name, achievement, or boss name, make sure to mention or roast it! Don't use quotes."
         )
 
         payload = {
