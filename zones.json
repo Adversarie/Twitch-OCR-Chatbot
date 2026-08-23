@@ -1,0 +1,140 @@
+{
+    "poe1": {
+        "poe1_death": {
+            "box": {
+                "monitor": 1,
+                "top": 400,
+                "left": 700,
+                "width": 500,
+                "height": 200
+            },
+            "keywords": [
+                "resurrect in town",
+                "resurrect at checkpoint"
+            ]
+        },
+        "poe1_level_up": {
+            "box": {
+                "monitor": 1,
+                "top": 800,
+                "left": 800,
+                "width": 300,
+                "height": 100
+            },
+            "keywords": [
+                "level up",
+                "passive skill"
+            ]
+        }
+    },
+    "poe2": {
+        "poe2_death": {
+            "box": {
+                "monitor": 1,
+                "top": 400,
+                "left": 700,
+                "width": 500,
+                "height": 200
+            },
+            "keywords": [
+                "resurrect",
+                "you have died"
+            ]
+        },
+        "poe2_level_up": {
+            "box": {
+                "monitor": 1,
+                "top": 750,
+                "left": 800,
+                "width": 320,
+                "height": 120
+            },
+            "keywords": [
+                "level up",
+                "passive skill"
+            ]
+        },
+        "poe2_boss_kill": {
+            "box": {
+                "monitor": 1,
+                "top": 200,
+                "left": 700,
+                "width": 520,
+                "height": 150
+            },
+            "keywords": [
+                "quest complete",
+                "defeated"
+            ]
+        },
+        "poe2_disconnect": {
+            "box": {
+                "monitor": 1,
+                "top": 450,
+                "left": 750,
+                "width": 420,
+                "height": 180
+            },
+            "keywords": [
+                "disconnected",
+                "unexpected error",
+                "connection lost",
+                "unable to connect"
+            ]
+        },
+        "poe2_inventory_full": {
+            "box": {
+                "monitor": 1,
+                "top": 220,
+                "left": 700,
+                "width": 520,
+                "height": 100
+            },
+            "keywords": [
+                "inventory is full",
+                "no space"
+            ]
+        },
+        "poe2_out_of_mana": {
+            "box": {
+                "monitor": 1,
+                "top": 220,
+                "left": 700,
+                "width": 520,
+                "height": 100
+            },
+            "keywords": [
+                "out of mana",
+                "not enough mana",
+                "need more spirit"
+            ]
+        }
+    },
+    "wow": {
+        "wow_death": {
+            "box": {
+                "monitor": 1,
+                "top": 200,
+                "left": 700,
+                "width": 500,
+                "height": 200
+            },
+            "keywords": [
+                "release spirit",
+                "recap"
+            ]
+        },
+        "wow_achievement": {
+            "box": {
+                "monitor": 1,
+                "top": 800,
+                "left": 800,
+                "width": 300,
+                "height": 150
+            },
+            "keywords": [
+                "achievement earned"
+            ]
+        }
+    }
+}
