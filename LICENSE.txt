@@ -1,0 +1,27 @@
+END-USER LICENSE AGREEMENT (EULA) FOR TWITCH OCR CHATBOT
+
+IMPORTANT — READ CAREFULLY: This End-User License Agreement ("Agreement") is a legal contract between you (either an individual streamer or a single entity, "Licensee") and the publisher of Twitch OCR Chatbot ("Licensor") for the Twitch OCR Chatbot desktop software application and associated media ("Software").
+
+By installing, copying, or otherwise using the Software, you agree to be bound by the terms of this Agreement.
+
+1. GRANT OF LICENSE
+   a) Trial / OBS Preview Mode: Licensor grants you a non-exclusive, non-transferable, revocable license to install and run the Software in Trial Mode on Windows workstations you own or control for the purpose of testing computer vision detection and previewing OBS Browser Source overlays.
+   b) Twitch OCR Chatbot Pro Subscription ($9/month or $49/year): Upon purchasing a valid Twitch OCR Chatbot Pro subscription and activating a License Key, Licensor grants you a non-exclusive, non-transferable license during the active subscription term to install and activate the Software on up to two (2) device seats owned or controlled by you, unlocking live Twitch Chat broadcasting and Discord Webhook integration.
+
+2. LICENSE VALIDATION & OFFLINE GRACE PERIOD
+   The Software validates Pro License Keys against the Lemon Squeezy licensing service and stores an encrypted hardware-bound token on your workstation using Windows DPAPI (%LOCALAPPDATA%\TwitchOCRChatbot\license.dat). The Software permits up to seven (7) days of offline operation between online license heartbeats. You may unlink a device seat at any time from within the Software's License dialog to transfer your seat to another workstation.
+
+3. RESTRICTIONS
+   You may not:
+   a) Distribute, share, sublicense, rent, lease, or publicly post your License Key;
+   b) Reverse engineer, decompile, disassemble, or tamper with the Software's license verification mechanisms;
+   c) Use the Software in violation of the Twitch Terms of Service or Community Guidelines.
+
+4. PRIVACY & LOCAL EXECUTION
+   Screen capture, OpenCV template matching, and game log tailing are performed locally on your computer. When 1-Click Twitch OAuth is used, OAuth tokens are stored locally in %LOCALAPPDATA%\TwitchOCRChatbot\.env and used solely to authenticate with Twitch on your behalf.
+
+5. DISCLAIMER OF WARRANTY
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT.
+
+6. LIMITATION OF LIABILITY
+   IN NO EVENT SHALL LICENSOR BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT, OR OTHERWISE, ARISING FROM, OUT OF, OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE, EXCEEDING THE AMOUNT PAID BY YOU FOR THE SOFTWARE IN THE TWELVE (12) MONTHS PRECEDING THE CLAIM.

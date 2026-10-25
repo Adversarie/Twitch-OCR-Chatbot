@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OBS Visual Overlay Prototype</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;700;800&family=Orbitron:wght@600;900&family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        /* Transparent canvas for OBS Studio Browser Source */
+        html, body {
+            background-color: transparent !important;
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        /* --- Variant A: Twitch Streamer Glass --- */
+        .glass-card {
+            background: rgba(18, 14, 28, 0.85);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(145, 70, 255, 0.4);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 0 0 25px rgba(145, 70, 255, 0.35);
+        }
+
+        @keyframes slideInRight {
+            0% { transform: translateX(120%) scale(0.9); opacity: 0; }
+            70% { transform: translateX(-5%) scale(1.02); opacity: 1; }
+            100% { transform: translateX(0) scale(1); opacity: 1; }
+        }
+        @keyframes slideOutRight {
+            0% { transform: translateX(0) scale(1); opacity: 1; }
+            100% { transform: translateX(120%) scale(0.9); opacity: 0; }
+        }
+        .anim-slide-in { animation: slideInRight 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        .anim-slide-out { animation: slideOutRight 0.4s cubic-bezier(0.7, 0, 0.84, 0) forwards; }
+
+        /* --- Variant B: Cyberpunk Neon Banner --- */
+        .cyberpunk-banner {
+            background: rgba(10, 11, 20, 0.95);
+            border-top: 3px solid #00f0ff;
+            border-bottom: 3px solid #ff0055;
+            box-shadow: 0 0 35px rgba(0, 240, 255, 0.4), inset 0 0 20px rgba(255, 0, 85, 0.2);
+            clip-path: polygon(0 0, 96% 0, 100% 40%, 100% 100%, 4% 100%, 0 60%);
+            font-family: 'Orbitron', sans-serif;
+        }
+        @keyframes dropInCyber {
+            0% { transform: translateY(-150%) skewX(-10deg); opacity: 0; }
+            60% { transform: translateY(10%) skewX(4deg); opacity: 1; }
+            100% { transform: translateY(0) skewX(0); opacity: 1; }
+        }
+        @keyframes retractCyber {
+            0% { transform: translateY(0); opacity: 1; }
+            100% { transform: translateY(-150%) skewX(10deg); opacity: 0; }
+        }
+        .anim-cyber-in { animation: dropInCyber 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.2) forwards; }
+        .anim-cyber-out { animation: retractCyber 0.35s ease-in forwards; }
+
+        /* --- Variant C: Retro Arcade RPG Box --- */
+        .retro-box {
+            background: #000;
+            border: 4px solid #fff;
+            box-shadow: 6px 6px 0px #F5A623, -6px -6px 0px #9146FF;
+            image-rendering: pixelated;
+            font-family: 'Press Start 2P', monospace;
+        }
+        @keyframes popInRetro {
+            0% { transform: scale(0.2); opacity: 0; }
+            80% { transform: scale(1.08); opacity: 1; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        @keyframes popOutRetro {
+            0% { transform: scale(1); opacity: 1; }
+            100% { transform: scale(0.1); opacity: 0; }
+        }
+        .anim-retro-in { animation: popInRetro 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+        .anim-retro-out { animation: popOutRetro 0.25s ease-in forwards; }
+
+        /* Floating Prototype Switcher & Sim Bar */
+        .proto-control {
+            background: rgba(15, 15, 20, 0.88);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+        }
+    </style>
+</head>
+<body class="relative flex flex-col justify-between">
+
+    <!-- PREVIEW CONTROLS: Shown only when ?preview=true or when accessed directly for testing -->
+    <div id="sim-bar" class="hidden proto-control m-4 p-2.5 rounded-xl flex items-center space-x-3 w-max z-50 pointer-events-auto">
+        <button id="audio-unlock-btn" onclick="initAudio()" class="px-3 py-1.5 bg-[#9146FF] hover:bg-[#772CE8] text-white text-xs font-bold rounded-lg transition flex items-center space-x-1.5 shadow">
+            <span id="audio-icon">🔊</span>
+            <span id="audio-label">Enable Audio</span>
+        </button>
+        <span class="text-xs text-gray-400 font-mono">|</span>
+        <button onclick="triggerSimAlert('death')" class="px-2.5 py-1.5 bg-red-900/60 hover:bg-red-800 text-red-200 border border-red-700/50 text-xs font-semibold rounded-lg transition">
+            Test Death
+        </button>
+        <button onclick="triggerSimAlert('mirror')" class="px-2.5 py-1.5 bg-amber-900/60 hover:bg-amber-800 text-amber-200 border border-amber-700/50 text-xs font-semibold rounded-lg transition">
+            Test Mirror Drop
+        </button>
+        <button onclick="triggerSimAlert('boss')" class="px-2.5 py-1.5 bg-purple-900/60 hover:bg-purple-800 text-purple-200 border border-purple-700/50 text-xs font-semibold rounded-lg transition">
+            Test Boss Kill
+        </button>
+        <span class="text-[10px] text-gray-500 font-mono ml-2">[OBS Source: Transparent Background]</span>
+    </div>
+
+    <!-- MAIN OVERLAY CONTAINER (Target render zones) -->
+    <div class="flex-1 w-full h-full p-8 flex flex-col justify-between pointer-events-none relative">
+        
+        <!-- TOP ZONE: Used by Cyberpunk Banner -->
+        <div class="w-full flex justify-center pt-2">
+            <div id="variant-b-slot" class="hidden max-w-3xl w-full">
+                <!-- Rendered dynamically -->
+            </div>
+        </div>
+
+        <!-- BOTTOM ZONE: Used by Twitch Glass & Retro Arcade -->
+        <div class="w-full flex justify-end items-end pb-12">
+            <div id="variant-a-slot" class="hidden max-w-md w-full">
+                <!-- Rendered dynamically -->
+            </div>
+            <div id="variant-c-slot" class="hidden max-w-lg w-full mr-auto">
+                <!-- Rendered dynamically -->
+            </div>
+        </div>
+    </div>
+
+    <!-- PREVIEW THEME SWITCHER: Shown only in preview mode -->
+    <div id="proto-switcher" class="hidden fixed bottom-3 left-1/2 -translate-x-1/2 proto-control px-4 py-2 rounded-full flex items-center space-x-4 z-50 pointer-events-auto">
+        <button onclick="cycleVariant(-1)" class="w-7 h-7 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white font-bold transition">
+            ←
+        </button>
+        <div class="text-center min-w-[240px]">
+            <span class="text-xs uppercase tracking-widest text-[#9146FF] font-bold block" id="variant-badge">THEME PREVIEW</span>
+            <span class="text-sm font-semibold text-white tracking-wide" id="variant-title">Twitch Streamer Glass</span>
+        </div>
+        <button onclick="cycleVariant(1)" class="w-7 h-7 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white font-bold transition">
+            →
+        </button>
+    </div>
+
+    <script>
+        // --- 1. Audio Synthesizer (Zero asset dependency SFX) ---
+        let audioCtx = null;
+        let audioReady = false;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+            audioReady = true;
+            document.getElementById('audio-label').textContent = "Audio Ready";
+            document.getElementById('audio-icon').textContent = "✅";
+            document.getElementById('audio-unlock-btn').classList.replace('bg-[#9146FF]', 'bg-emerald-600');
+        }
+
+        function playSfx(type, variant) {
+            if (!audioCtx || audioCtx.state !== 'running') return;
+            const now = audioCtx.currentTime;
+
+            if (variant === 'C') {
+                // Retro 8-bit square-wave arp
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'square';
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                if (type.includes('death')) {
+                    osc.frequency.setValueAtTime(300, now);
+                    osc.frequency.exponentialRampToValueAtTime(100, now + 0.35);
+                } else if (type.includes('mirror') || type.includes('exalted')) {
+                    osc.frequency.setValueAtTime(440, now);
+                    osc.frequency.setValueAtTime(660, now + 0.08);
+                    osc.frequency.setValueAtTime(880, now + 0.16);
+                    osc.frequency.setValueAtTime(1320, now + 0.24);
+                } else {
+                    osc.frequency.setValueAtTime(523, now);
+                    osc.frequency.setValueAtTime(659, now + 0.12);
+                }
+                gain.gain.setValueAtTime(0.2, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+                osc.start(now);
+                osc.stop(now + 0.4);
+            } else if (variant === 'B') {
+                // Cyberpunk industrial neon buzz
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sawtooth';
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                osc.frequency.setValueAtTime(type.includes('death') ? 140 : 580, now);
+                osc.frequency.exponentialRampToValueAtTime(type.includes('death') ? 70 : 880, now + 0.3);
+                gain.gain.setValueAtTime(0.25, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
+                osc.start(now);
+                osc.stop(now + 0.35);
+            } else {
+                // Variant A: Smooth harmonic chime
+                const freqs = type.includes('death') ? [320, 240] : [523.25, 659.25, 783.99];
+                freqs.forEach((freq, idx) => {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'sine';
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+
+                    osc.frequency.setValueAtTime(freq, now + (idx * 0.08));
+                    gain.gain.setValueAtTime(0.18, now + (idx * 0.08));
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
+                    osc.start(now + (idx * 0.08));
+                    osc.stop(now + 0.6);
+                });
+            }
+        }
+
+        // --- 2. Theme & Variant Definition ---
+        const THEME_MAP = {
+            'glass': 'A',
+            'cyberpunk': 'B',
+            'retro': 'C',
+            'a': 'A',
+            'b': 'B',
+            'c': 'C'
+        };
+
+        const VARIANTS = {
+            'A': {
+                name: 'Twitch Streamer Glass',
+                code: 'glass',
+                render: renderVariantA
+            },
+            'B': {
+                name: 'Cyberpunk Neon Banner',
+                code: 'cyberpunk',
+                render: renderVariantB
+            },
+            'C': {
+                name: 'Retro Arcade RPG Box',
+                code: 'retro',
+                render: renderVariantC
+            }
+        };
+
+        const variantKeys = ['A', 'B', 'C'];
+        const urlParams = new URLSearchParams(window.location.search);
+        
+        // Resolve theme parameter or variant parameter
+        const requestedTheme = (urlParams.get('theme') || urlParams.get('variant') || 'glass').toLowerCase();
+        let currentVariantKey = THEME_MAP[requestedTheme] || 'A';
+
+        // Check if preview mode is active
+        const isPreviewMode = urlParams.get('preview') === 'true' || (!urlParams.has('theme') && !urlParams.has('variant'));
+        if (isPreviewMode) {
+            document.getElementById('sim-bar').classList.remove('hidden');
+            document.getElementById('proto-switcher').classList.remove('hidden');
+        }
+
+        function updateVariantUI() {
+            const variantObj = VARIANTS[currentVariantKey];
+            document.getElementById('variant-title').textContent = variantObj.name;
+            
+            // In preview mode, keep URL updated
+            if (isPreviewMode) {
+                const newUrl = new URL(window.location);
+                newUrl.searchParams.set('theme', variantObj.code);
+                newUrl.searchParams.set('preview', 'true');
+                window.history.replaceState({}, '', newUrl);
+            }
+
+            // Hide all slots
+            ['variant-a-slot', 'variant-b-slot', 'variant-c-slot'].forEach(id => {
+                document.getElementById(id).classList.add('hidden');
+                document.getElementById(id).innerHTML = '';
+            });
+        }
+
+        function cycleVariant(direction) {
+            let idx = variantKeys.indexOf(currentVariantKey);
+            idx = (idx + direction + variantKeys.length) % variantKeys.length;
+            currentVariantKey = variantKeys[idx];
+            updateVariantUI();
+            triggerSimAlert('death'); // preview immediately on switch
+        }
+
+        // Keyboard listener for Left/Right arrows
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowLeft') cycleVariant(-1);
+            if (e.key === 'ArrowRight') cycleVariant(1);
+        });
+
+        // --- 3. Variant Renderers ---
+        let dismissTimer = null;
+
+        function displayAlert(data) {
+            playSfx(data.event_id || '', currentVariantKey);
+
+            if (dismissTimer) clearTimeout(dismissTimer);
+
+            if (currentVariantKey === 'A') renderVariantA(data);
+            else if (currentVariantKey === 'B') renderVariantB(data);
+            else if (currentVariantKey === 'C') renderVariantC(data);
+        }
+
+        // Variant A: Twitch Streamer Glass
+        function renderVariantA(data) {
+            const slot = document.getElementById('variant-a-slot');
+            slot.classList.remove('hidden');
+
+            const isDeath = (data.event_id || '').includes('death');
+            const badgeColor = isDeath ? 'bg-red-500/20 text-red-400 border-red-500/30' : 'bg-[#9146FF]/20 text-[#A970FF] border-[#9146FF]/30';
+            const icon = isDeath ? '💀' : '⚡';
+
+            slot.innerHTML = `
+                <div id="active-alert-card" class="glass-card p-5 rounded-2xl border text-white font-sans anim-slide-in relative overflow-hidden">
+                    <div class="flex items-center justify-between mb-2">
+                        <div class="flex items-center space-x-2">
+                            <span class="text-lg">${icon}</span>
+                            <span class="px-2 py-0.5 rounded text-[11px] font-bold uppercase tracking-wider border ${badgeColor}">
+                                ${formatEventTitle(data.event_id)}
+                            </span>
+                        </div>
+                        <span class="text-[11px] font-mono text-gray-400 font-semibold tracking-wider">AI CO-HOST</span>
+                    </div>
+                    <p class="text-base font-bold leading-snug tracking-tight text-white mb-2 drop-shadow">
+                        "${escapeHtml(data.reaction)}"
+                    </p>
+                    ${data.context ? `<p class="text-xs text-gray-400 font-mono italic">Context: ${escapeHtml(data.context)}</p>` : ''}
+                    <div class="w-full bg-white/10 h-1 rounded-full mt-3 overflow-hidden">
+                        <div id="progress-bar" class="bg-[#9146FF] h-full w-full transition-all duration-[6000ms] ease-linear"></div>
+                    </div>
+                </div>
+            `;
+
+            setTimeout(() => {
+                const pb = document.getElementById('progress-bar');
+                if (pb) pb.style.width = '0%';
+            }, 50);
+
+            dismissTimer = setTimeout(() => {
+                const el = document.getElementById('active-alert-card');
+                if (el) {
+                    el.classList.replace('anim-slide-in', 'anim-slide-out');
+                    setTimeout(() => slot.classList.add('hidden'), 400);
+                }
+            }, 6000);
+        }
+
+        // Variant B: Cyberpunk Neon Banner
+        function renderVariantB(data) {
+            const slot = document.getElementById('variant-b-slot');
+            slot.classList.remove('hidden');
+
+            const isDeath = (data.event_id || '').includes('death');
+            const accentGlow = isDeath ? 'text-[#ff0055] drop-shadow-[0_0_12px_#ff0055]' : 'text-[#00f0ff] drop-shadow-[0_0_12px_#00f0ff]';
+
+            slot.innerHTML = `
+                <div id="active-alert-card" class="cyberpunk-banner px-8 py-5 text-white anim-cyber-in relative">
+                    <div class="flex items-center justify-between border-b border-gray-700/60 pb-2 mb-2">
+                        <span class="text-xs font-black tracking-widest ${accentGlow}">
+                            ▶ LIVE STREAM OVERRIDE // ${formatEventTitle(data.event_id)}
+                        </span>
+                        <span class="text-[10px] text-gray-400 font-mono">SYS.VER.2.0</span>
+                    </div>
+                    <div class="text-xl font-black uppercase tracking-wide text-white py-1">
+                        "${escapeHtml(data.reaction)}"
+                    </div>
+                    ${data.context ? `<div class="text-xs font-mono text-[#00f0ff]/80 mt-1">&gt; ${escapeHtml(data.context)}</div>` : ''}
+                </div>
+            `;
+
+            dismissTimer = setTimeout(() => {
+                const el = document.getElementById('active-alert-card');
+                if (el) {
+                    el.classList.replace('anim-cyber-in', 'anim-cyber-out');
+                    setTimeout(() => slot.classList.add('hidden'), 350);
+                }
+            }, 5500);
+        }
+
+        // Variant C: Retro Arcade RPG Box
+        function renderVariantC(data) {
+            const slot = document.getElementById('variant-c-slot');
+            slot.classList.remove('hidden');
+
+            slot.innerHTML = `
+                <div id="active-alert-card" class="retro-box p-5 text-white anim-retro-in max-w-lg">
+                    <div class="flex items-center space-x-3 mb-3 border-b-2 border-white pb-2">
+                        <div class="w-8 h-8 bg-[#9146FF] border border-white flex items-center justify-center text-sm font-bold">
+                            👾
+                        </div>
+                        <div class="text-[10px] text-[#F5A623] tracking-widest uppercase">
+                            BOT: ${formatEventTitle(data.event_id)}
+                        </div>
+                    </div>
+                    <div class="text-xs leading-relaxed text-white">
+                        ${escapeHtml(data.reaction)}
+                    </div>
+                    <div class="text-[8px] text-gray-400 mt-3 flex justify-between font-mono">
+                        <span>${data.context ? '[' + escapeHtml(data.context) + ']' : ''}</span>
+                        <span class="animate-pulse">▼</span>
+                    </div>
+                </div>
+            `;
+
+            dismissTimer = setTimeout(() => {
+                const el = document.getElementById('active-alert-card');
+                if (el) {
+                    el.classList.replace('anim-retro-in', 'anim-retro-out');
+                    setTimeout(() => slot.classList.add('hidden'), 250);
+                }
+            }, 5500);
+        }
+
+        // --- Helpers ---
+        function formatEventTitle(id) {
+            if (!id) return 'GAME EVENT';
+            return id.replace(/_/g, ' ').toUpperCase();
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        }
+
+        function triggerSimAlert(type) {
+            initAudio();
+            const samples = {
+                death: {
+                    event_id: 'poe2_death',
+                    reaction: 'RIP bozo! 10% EXP donated to the Twilight Strand! KEKW',
+                    context: 'Crucible Pinnacle Boss'
+                },
+                mirror: {
+                    event_id: 'poe1_exalted_mirror_drop',
+                    reaction: 'MIRROR OF KALANDRA?! Unethical streamer RNG! Ban them PogChamp',
+                    context: 'Tier 17 Citadel Map'
+                },
+                boss: {
+                    event_id: 'poe2_boss_kill',
+                    reaction: 'Boss down! Absolute gigachad gameplay! (Loot was trash though LUL)',
+                    context: 'The Iron Count'
+                }
+            };
+            displayAlert(samples[type] || samples.death);
+        }
+
+        // --- 4. Live Server-Sent Events (SSE) from Backend ---
+        function connectLiveSSE() {
+            try {
+                const evtSource = new EventSource('/api/overlay/events');
+                evtSource.onmessage = function(event) {
+                    try {
+                        const data = JSON.parse(event.data);
+                        displayAlert(data);
+                    } catch (e) {
+                        console.error("SSE parse error", e);
+                    }
+                };
+                evtSource.onerror = function() {
+                    evtSource.close();
+                    setTimeout(connectLiveSSE, 4000); // Reconnect
+                };
+            } catch (err) {
+                console.log("SSE not available on static render, testing simulation mode");
+            }
+        }
+
+        // Init on load
+        updateVariantUI();
+        connectLiveSSE();
+    </script>
+</body>
+</html>

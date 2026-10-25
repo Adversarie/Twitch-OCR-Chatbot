@@ -13,7 +13,14 @@ logger = logging.getLogger(__name__)
 pytesseract.pytesseract.tesseract_cmd = Config.TESSERACT_CMD
 
 def load_zones():
-    zones_path = os.path.join(os.path.dirname(__file__), "zones.json")
+    import sys
+    if hasattr(Config, "ZONES_FILE") and os.path.exists(Config.ZONES_FILE):
+        zones_path = str(Config.ZONES_FILE)
+    else:
+        base = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
+        zones_path = os.path.join(base, "zones.json")
+        if not os.path.exists(zones_path):
+            zones_path = "zones.json"
     try:
         with open(zones_path, "r", encoding="utf-8") as f:
             return json.load(f)
@@ -21,11 +28,14 @@ def load_zones():
         logger.error(f"Failed to load zones.json: {e}")
         return {}
 
+from template_scanner import TemplateScanner
+
 class OCRScanner:
     def __init__(self, target_game: str = Config.TARGET_GAME):
         self.target_game = target_game
         self.sct = mss.MSS()
         self.all_zones = load_zones()
+        self.template_scanner = TemplateScanner()
         
         if self.target_game not in self.all_zones:
             logger.warning(f"Target game '{self.target_game}' not found in zones.json. Using empty configuration.")
@@ -34,8 +44,9 @@ class OCRScanner:
             self.zones = self.all_zones[self.target_game]
 
     def reload_zones(self):
-        """Reloads the zones from the JSON file. Useful when edited by the GUI."""
+        """Reloads the zones and templates from disk."""
         self.all_zones = load_zones()
+        self.template_scanner.reload_templates()
         if self.target_game in self.all_zones:
             self.zones = self.all_zones[self.target_game]
         else:
@@ -51,11 +62,19 @@ class OCRScanner:
 
     def scan(self):
         """
-        Scans all defined zones for the target game.
-        Returns a list of detected event_ids and the extracted text.
+        Scans using full-screen template matching first, then checks defined zones.
         Returns format: [(event_id, extracted_text), ...]
         """
         detected_events = []
+        
+        # 1. High-speed full-screen template matching (~5-15ms)
+        try:
+            template_events = self.template_scanner.scan(self.target_game)
+            detected_events.extend(template_events)
+        except Exception as e:
+            logger.error(f"Error during template matching: {e}")
+            
+        # 2. Legacy zone OCR (only if zones are defined)
         for event_id, config in self.zones.items():
             box = config["box"]
             keywords = config["keywords"]

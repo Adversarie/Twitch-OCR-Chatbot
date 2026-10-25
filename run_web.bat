@@ -1,6 +1,6 @@
 @echo off
-title Twitch OCR Chatbot GUI
-echo Starting Twitch OCR Chatbot GUI...
+title Twitch OCR Chatbot Web UI
+echo Starting Twitch OCR Chatbot Web UI...
 echo.
 
 :: Check if virtual environment exists
@@ -12,12 +12,14 @@ if not exist "venv\Scripts\activate.bat" (
     exit /b
 )
 
-:: Activate the venv and start the GUI
+:: Activate the venv and start the Web UI
 call venv\Scripts\activate.bat
-python gui.py
+start http://127.0.0.1:8000
+python web.py
 
 if %ERRORLEVEL% neq 0 (
     echo.
-    echo [ERROR] The GUI crashed or exited with an error code %ERRORLEVEL%.
+    echo [ERROR] The Web UI crashed or exited with an error code %ERRORLEVEL%.
     pause
 )
+

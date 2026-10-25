@@ -7,13 +7,21 @@ from ocr_scanner import OCRScanner
 from log_watcher import LogWatcher
 
 import sys
+import os
+
+# Ensure valid stdout/stderr streams in windowless / frozen Windows environments
+if sys.stdout is None:
+    sys.stdout = open(os.devnull, "w", encoding="utf-8")
+if sys.stderr is None:
+    sys.stderr = open(os.devnull, "w", encoding="utf-8")
+
 from logging.handlers import RotatingFileHandler
 
 # Set up logging to both console and a rotating log file
 log_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
-# Rotating File Handler (max 5MB, keep 3 backup logs)
-file_handler = RotatingFileHandler('bot.log', maxBytes=5*1024*1024, backupCount=3, encoding='utf-8')
+# Rotating File Handler (max 5MB, keep 3 backup logs) in %LOCALAPPDATA%\TwitchOCRChatbot\bot.log
+file_handler = RotatingFileHandler(str(Config.LOG_FILE), maxBytes=5*1024*1024, backupCount=3, encoding='utf-8')
 file_handler.setFormatter(log_formatter)
 file_handler.setLevel(logging.INFO)
 
@@ -33,11 +41,14 @@ logger = logging.getLogger(__name__)
 class TwitchOCRBot(commands.Bot):
     def __init__(self, engine):
         # Initialize Twitch bot with modern OAuth
+        token = (Config.TWITCH_OAUTH_TOKEN or "").strip()
+        client_id = (Config.TWITCH_CLIENT_ID or "").strip()
+        channel = (Config.TWITCH_CHANNEL or "").strip()
         super().__init__(
-            token=Config.TWITCH_OAUTH_TOKEN,
-            client_id=Config.TWITCH_CLIENT_ID,
+            token=token,
+            client_id=client_id,
             prefix='!',
-            initial_channels=[Config.TWITCH_CHANNEL]
+            initial_channels=[channel] if channel else []
         )
         
         self.engine = engine
@@ -119,10 +130,15 @@ class TwitchOCRBot(commands.Bot):
             status = "enabled" if self.is_scanning else "disabled"
             await ctx.send(f"OCR scanning has been {status}.")
 
+import json
+import urllib.request
+from game_detector import GameDetector
+
 async def run_app():
     """Core Application Runner orchestrating the Scanner, Engine, and Twitch Bot."""
     engine = ReactionEngine()
-    scanner = OCRScanner()
+    detector = GameDetector(Config.TARGET_GAME)
+    scanner = OCRScanner(Config.TARGET_GAME)
     log_watcher = LogWatcher(Config)
     bot = TwitchOCRBot(engine)
     
@@ -134,6 +150,22 @@ async def run_app():
         reaction_msg = engine.get_reaction(event_id, text_context)
         if reaction_msg:
             await bot.send_chat_message(Config.TWITCH_CHANNEL, reaction_msg)
+            
+            # Broadcast to Discord Webhook if configured
+            if Config.DISCORD_WEBHOOK_URL:
+                def _send_discord():
+                    req = urllib.request.Request(
+                        Config.DISCORD_WEBHOOK_URL,
+                        data=json.dumps({"content": reaction_msg}).encode("utf-8"),
+                        headers={"Content-Type": "application/json", "User-Agent": "TwitchBot"}
+                    )
+                    with urllib.request.urlopen(req, timeout=5) as _:
+                        pass
+                try:
+                    await asyncio.to_thread(_send_discord)
+                    logger.info("Sent reaction to Discord Webhook")
+                except Exception as e:
+                    logger.error(f"Failed to send to Discord Webhook: {e}")
 
     async def scan_loop():
         logger.info("Started OCR Scanning Loop")
@@ -141,7 +173,10 @@ async def run_app():
         
         while True:
             if bot.is_scanning:
-                # Reload zones from disk dynamically so GUI edits take effect immediately
+                active_game = detector.detect()
+                if active_game != scanner.target_game:
+                    scanner.target_game = active_game
+                # Reload zones from disk dynamically so edits take effect immediately
                 scanner.reload_zones()
                 detected_events = scanner.scan()
                 

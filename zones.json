@@ -1,59 +1,6 @@
 {
-    "poe1": {
-        "poe1_death": {
-            "box": {
-                "monitor": 1,
-                "top": 400,
-                "left": 700,
-                "width": 500,
-                "height": 200
-            },
-            "keywords": [
-                "resurrect in town",
-                "resurrect at checkpoint"
-            ]
-        },
-        "poe1_level_up": {
-            "box": {
-                "monitor": 1,
-                "top": 800,
-                "left": 800,
-                "width": 300,
-                "height": 100
-            },
-            "keywords": [
-                "level up",
-                "passive skill"
-            ]
-        }
-    },
+    "poe1": {},
     "poe2": {
-        "poe2_death": {
-            "box": {
-                "monitor": 1,
-                "top": 400,
-                "left": 700,
-                "width": 500,
-                "height": 200
-            },
-            "keywords": [
-                "resurrect",
-                "you have died"
-            ]
-        },
-        "poe2_level_up": {
-            "box": {
-                "monitor": 1,
-                "top": 750,
-                "left": 800,
-                "width": 320,
-                "height": 120
-            },
-            "keywords": [
-                "level up",
-                "passive skill"
-            ]
-        },
         "poe2_boss_kill": {
             "box": {
                 "monitor": 1,
@@ -111,19 +58,6 @@
         }
     },
     "wow": {
-        "wow_death": {
-            "box": {
-                "monitor": 1,
-                "top": 200,
-                "left": 700,
-                "width": 500,
-                "height": 200
-            },
-            "keywords": [
-                "release spirit",
-                "recap"
-            ]
-        },
         "wow_achievement": {
             "box": {
                 "monitor": 1,

@@ -1,0 +1,1097 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Twitch OCR Chatbot - OBS Control Center</title>
+    <link rel="icon" type="image/x-icon" href="/static/app_icon.ico">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0B0A0F;
+            background-image: 
+                linear-gradient(rgba(145, 70, 255, 0.04) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(145, 70, 255, 0.04) 1px, transparent 1px);
+            background-size: 28px 28px;
+            color: #E2DFEB;
+        }
+        
+        h1, h2, h3, .font-display {
+            font-family: 'Space Grotesk', sans-serif;
+        }
+
+        code, pre, .font-mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+        
+        .glass-panel {
+            background: rgba(18, 16, 24, 0.85);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            border: 1px solid rgba(255, 255, 255, 0.07);
+        }
+        
+        .nav-btn {
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 1px solid transparent;
+        }
+        .nav-btn.active {
+            background: rgba(145, 70, 255, 0.15);
+            border: 1px solid rgba(145, 70, 255, 0.35);
+            box-shadow: inset 0 0 20px rgba(145, 70, 255, 0.08);
+            color: #fff;
+        }
+        .nav-btn:hover:not(.active) {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #9146FF 0%, #772CE8 100%);
+            box-shadow: 0 4px 14px rgba(145, 70, 255, 0.3);
+            transition: all 0.2s;
+        }
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(145, 70, 255, 0.45);
+        }
+        
+        .btn-danger {
+            background: linear-gradient(135deg, #FF4646 0%, #E82C2C 100%);
+            box-shadow: 0 4px 14px rgba(255, 70, 70, 0.3);
+            transition: all 0.2s;
+        }
+        .btn-danger:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(255, 70, 70, 0.45);
+        }
+
+        /* Custom scrollbars */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: rgba(0,0,0,0.25); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.25); }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col md:flex-row antialiased overflow-x-hidden">
+    
+    <!-- RESPONSIVE SIDEBAR / OBS DOCK TOPBAR -->
+    <aside class="w-full md:w-64 lg:w-72 glass-panel p-4 md:p-6 border-b md:border-b-0 md:border-r border-gray-800 flex flex-col z-20 shadow-2xl flex-shrink-0">
+        <!-- Logo & Header -->
+        <div class="flex items-center justify-between md:block mb-3 md:mb-8">
+            <div>
+                <div class="flex items-center space-x-2">
+                    <span class="w-3 h-3 rounded-full bg-[#9146FF] shadow-[0_0_10px_#9146FF]"></span>
+                    <h1 class="text-xl md:text-2xl font-bold text-white font-display tracking-tight" style="text-shadow: 0 0 20px rgba(145, 70, 255, 0.5);">OCR Chatbot</h1>
+                </div>
+                <p class="text-[11px] text-gray-400 font-mono mt-0.5 hidden md:block">OBS Co-Host Suite</p>
+            </div>
+
+            <!-- Mobile / Compact Dock Status Indicator & Game Picker -->
+            <div class="flex md:hidden items-center space-x-2">
+                <div class="w-2.5 h-2.5 rounded-full bg-red-500" id="status-dot-sm"></div>
+                <select id="game-select-sm" onchange="changeGame(this.value)" class="bg-black/60 border border-gray-700 text-xs text-[#9146FF] font-mono font-bold uppercase rounded px-1.5 py-0.5 focus:outline-none cursor-pointer">
+                    <option value="auto">AUTO</option>
+                    <option value="poe1">POE 1</option>
+                    <option value="poe2">POE 2</option>
+                    <option value="wow">WOW</option>
+                </select>
+                <button onclick="openLicenseModal()" title="Manage Subscription" class="px-2 py-0.5 bg-white/5 hover:bg-white/10 border border-gray-700 rounded text-xs transition">
+                    💎
+                </button>
+            </div>
+        </div>
+        
+        <!-- Navigation Tabs (horizontal on small screens / dock mode, vertical on desktop) -->
+        <nav class="flex md:flex-col gap-1.5 md:space-y-2 flex-1 overflow-x-auto md:overflow-x-visible pb-1 md:pb-0">
+            <button onclick="showTab('dashboard')" id="btn-dashboard" class="nav-btn active flex-1 md:flex-initial flex items-center justify-center md:justify-start px-3 py-2.5 md:px-4 md:py-3 rounded-lg text-gray-300 font-medium text-xs md:text-sm whitespace-nowrap">
+                <span class="text-base mr-2">📊</span> Overview
+            </button>
+            <button onclick="showTab('settings')" id="btn-settings" class="nav-btn flex-1 md:flex-initial flex items-center justify-center md:justify-start px-3 py-2.5 md:px-4 md:py-3 rounded-lg text-gray-300 font-medium text-xs md:text-sm whitespace-nowrap">
+                <span class="text-base mr-2">⚙️</span> Config
+            </button>
+            <button onclick="showTab('templates')" id="btn-templates" class="nav-btn flex-1 md:flex-initial flex items-center justify-center md:justify-start px-3 py-2.5 md:px-4 md:py-3 rounded-lg text-gray-300 font-medium text-xs md:text-sm whitespace-nowrap">
+                <span class="text-base mr-2">🎯</span> Templates
+            </button>
+        </nav>
+
+        <!-- OBS Setup & Subscription Status in Sidebar Footer -->
+        <div class="mt-auto pt-4 md:pt-6 border-t border-gray-800/80 hidden md:flex flex-col space-y-3">
+            <!-- Scanner State Indicator -->
+            <div id="bot-status-indicator" class="flex items-center space-x-2.5 text-xs font-display tracking-wider uppercase">
+                <div class="w-2.5 h-2.5 rounded-full bg-red-500 transition-colors duration-300" id="status-dot"></div>
+                <span id="status-text" class="text-gray-400 font-bold">Scanner Offline</span>
+            </div>
+            
+            <!-- Active Game Selector -->
+            <div class="bg-white/5 border border-gray-800 rounded-lg p-2.5 space-y-1.5">
+                <div class="flex items-center justify-between text-[11px] text-gray-400 font-mono">
+                    <span class="flex items-center gap-1"><span>🎮</span> Target Game:</span>
+                    <span id="active-game-badge" class="text-[#9146FF] font-bold uppercase tracking-wider text-[10px]">Auto</span>
+                </div>
+                <select id="game-select-sidebar" onchange="changeGame(this.value)" class="w-full bg-black/60 border border-gray-700 hover:border-[#9146FF] text-white rounded px-2 py-1 text-xs font-mono focus:outline-none focus:border-[#9146FF] transition cursor-pointer">
+                    <option value="auto">🔄 Auto-Detect (Active Window)</option>
+                    <option value="poe1">Path of Exile 1</option>
+                    <option value="poe2">Path of Exile 2</option>
+                    <option value="wow">World of Warcraft</option>
+                </select>
+            </div>
+
+            <!-- Subscription License Pill -->
+            <div onclick="openLicenseModal()" class="cursor-pointer bg-white/5 hover:bg-white/10 border border-gray-800 rounded-lg p-2.5 transition flex items-center justify-between text-xs">
+                <div class="flex items-center space-x-2">
+                    <span>💎</span>
+                    <span id="license-pill-text" class="font-semibold text-gray-300">Checking License...</span>
+                </div>
+                <span class="text-[10px] text-gray-500 hover:text-gray-300 font-mono">Manage</span>
+            </div>
+
+            <!-- Twitch Channel Status & 1-Click OAuth -->
+            <div class="bg-white/5 border border-gray-800 rounded-lg p-2.5 space-y-2">
+                <div class="text-[11px] text-gray-400 font-mono flex items-center justify-between">
+                    <span>Twitch Chat:</span>
+                    <span id="twitch-channel-badge" class="text-white font-bold truncate max-w-[120px]">...</span>
+                </div>
+                <div id="twitch-sidebar-auth-actions" class="flex items-center gap-1.5">
+                    <button id="btn-twitch-connect-sidebar" onclick="startTwitchDeviceAuth()" class="w-full py-1.5 px-2.5 bg-[#9146FF] hover:bg-[#772CE8] text-white rounded text-[11px] font-bold font-display uppercase tracking-wider transition">
+                        Connect Twitch
+                    </button>
+                    <button id="btn-twitch-disconnect-sidebar" onclick="disconnectTwitchAuth()" class="hidden w-full py-1.5 px-2.5 bg-gray-800 hover:bg-red-950/60 border border-gray-700 hover:border-red-800 text-gray-300 hover:text-red-300 rounded text-[11px] font-semibold font-mono transition">
+                        Disconnect
+                    </button>
+                </div>
+                <div id="twitch-device-code-box" class="hidden bg-black/60 border border-[#9146FF]/40 rounded p-2 text-[10px] font-mono text-gray-300 space-y-1">
+                    <div class="flex items-center justify-between">
+                        <span class="text-[#A970FF] font-bold">Activate Code:</span>
+                        <span id="twitch-user-code" class="text-white font-bold tracking-widest bg-[#9146FF]/20 px-1.5 py-0.5 rounded"></span>
+                    </div>
+                    <div id="twitch-poll-msg" class="text-gray-400">Waiting for Twitch approval...</div>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- MAIN CONTENT AREA -->
+    <main class="flex-1 p-4 md:p-8 lg:p-10 h-auto md:h-screen overflow-y-auto relative z-0 flex flex-col">
+        
+        <!-- DASHBOARD TAB -->
+        <div id="dashboard" class="tab-content active flex-1 flex flex-col max-w-6xl w-full mx-auto space-y-5">
+            
+            <!-- Top Controls Banner -->
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-800 pb-4">
+                <div>
+                    <h2 class="text-2xl sm:text-3xl font-bold font-display text-white">Live Stream Overview</h2>
+                    <p class="text-xs sm:text-sm text-gray-400 mt-0.5">Real-time computer vision Game Events, chat Reactions, and OBS Overlay.</p>
+                </div>
+                <div class="flex flex-wrap items-center gap-2 sm:gap-3">
+                    <!-- Game Selector Dropdown -->
+                    <div class="flex items-center space-x-2 bg-black/50 border border-gray-700 hover:border-[#9146FF] transition rounded-lg px-3 py-1.5 shadow-sm">
+                        <span class="text-xs text-gray-400 font-mono">🎮 Game:</span>
+                        <select id="game-select-top" onchange="changeGame(this.value)" class="bg-transparent text-white text-xs font-bold font-display focus:outline-none cursor-pointer">
+                            <option value="auto" class="bg-gray-900 text-white">🔄 Auto-Detect (Active Window)</option>
+                            <option value="poe1" class="bg-gray-900 text-white">Path of Exile 1</option>
+                            <option value="poe2" class="bg-gray-900 text-white">Path of Exile 2</option>
+                            <option value="wow" class="bg-gray-900 text-white">World of Warcraft</option>
+                        </select>
+                    </div>
+
+                    <button onclick="openObsGuideModal()" class="px-3.5 py-2 bg-gray-800 hover:bg-gray-700 text-gray-200 text-xs font-bold rounded-lg transition border border-gray-700 flex items-center space-x-1.5 font-display tracking-wide uppercase">
+                        <span>📌</span>
+                        <span>OBS Dock Guide</span>
+                    </button>
+                    <button id="toggle-bot-btn" onclick="toggleBot()" class="btn-primary text-white font-bold py-2 px-6 rounded-lg font-display tracking-wide uppercase text-xs sm:text-sm">
+                        Start Scanning
+                    </button>
+                </div>
+            </div>
+
+            <!-- OBS ON-STREAM OVERLAY INTEGRATION CARD -->
+            <div class="glass-panel p-4 sm:p-5 rounded-xl border border-gray-800 shadow-lg relative overflow-hidden">
+                <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                    <div class="space-y-1">
+                        <div class="flex items-center space-x-2">
+                            <span class="text-base">📺</span>
+                            <h3 class="text-base font-bold font-display text-white">OBS Browser Source Overlay</h3>
+                            <span class="px-2 py-0.5 text-[10px] font-mono font-bold rounded bg-[#9146FF]/20 text-[#A970FF] uppercase border border-[#9146FF]/30">Transparent Canvas</span>
+                        </div>
+                        <p class="text-xs text-gray-400">Add this URL as a Browser Source (1920x1080) to show real-time animated reaction cards on stream.</p>
+                    </div>
+
+                    <!-- Theme & Copy Controls -->
+                    <div class="flex flex-wrap items-center gap-2 sm:gap-3">
+                        <div class="flex items-center space-x-2 bg-black/40 border border-gray-700 rounded-lg px-2.5 py-1.5">
+                            <span class="text-xs text-gray-400 font-mono">Theme:</span>
+                            <select id="overlay-theme-select" onchange="updateOverlayUrl()" class="bg-transparent text-white text-xs font-semibold focus:outline-none cursor-pointer">
+                                <option value="glass" class="bg-gray-900 text-white">Twitch Glass (Default)</option>
+                                <option value="cyberpunk" class="bg-gray-900 text-white">Cyberpunk Neon Banner</option>
+                                <option value="retro" class="bg-gray-900 text-white">Retro Arcade RPG Box</option>
+                            </select>
+                        </div>
+
+                        <button onclick="copyOverlayUrl()" id="copy-overlay-btn" class="px-3.5 py-2 bg-[#9146FF]/20 hover:bg-[#9146FF]/30 border border-[#9146FF]/40 text-[#E2DFEB] text-xs font-bold rounded-lg transition flex items-center space-x-1.5 shadow">
+                            <span id="copy-icon">📋</span>
+                            <span id="copy-text">Copy Overlay URL</span>
+                        </button>
+
+                        <button onclick="testOverlayPreview()" class="px-3 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs font-bold rounded-lg transition border border-gray-700 flex items-center space-x-1">
+                            <span>Test Preview</span>
+                            <span>↗</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- URL Readout Bar -->
+                <div class="mt-3 pt-3 border-t border-gray-800/80 flex items-center justify-between text-xs font-mono text-gray-400">
+                    <span class="truncate mr-4 text-gray-400" id="overlay-url-display">http://127.0.0.1:8000/overlay?theme=glass</span>
+                    <span class="text-[10px] text-emerald-400 flex items-center gap-1 font-semibold flex-shrink-0">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> SSE Live Feed Active
+                    </span>
+                </div>
+            </div>
+
+            <!-- Event Simulator Panel -->
+            <div class="glass-panel p-4 rounded-xl flex flex-wrap gap-3 items-center border border-gray-800 shadow-md">
+                <span class="text-xs font-display uppercase tracking-widest text-[#9146FF] font-bold">Simulate Event:</span>
+                <select id="sim-event" class="bg-black/50 border border-gray-700 text-white rounded-lg px-3 py-1.5 text-xs font-mono focus:outline-none focus:border-[#9146FF]">
+                    <option value="poe2_death">PoE 2 - Player Death</option>
+                    <option value="poe2_level_up">PoE 2 - Level Up</option>
+                    <option value="poe2_boss_kill">PoE 2 - Boss Kill</option>
+                    <option value="poe2_disconnect">PoE 2 - Disconnect</option>
+                    <option value="poe2_inventory_full">PoE 2 - Inventory Full</option>
+                    <option value="poe2_out_of_mana">PoE 2 - Out of Mana</option>
+                    <option value="poe1_death">PoE 1 - Player Death</option>
+                    <option value="poe1_level_up">PoE 1 - Level Up</option>
+                    <option value="poe1_exalted_mirror_drop">PoE 1 - Mirror Drop</option>
+                    <option value="wow_death">WoW - Player Death</option>
+                    <option value="wow_achievement">WoW - Achievement</option>
+                    <option value="wow_loot_drop">WoW - Epic Loot</option>
+                </select>
+                <input id="sim-context" type="text" placeholder="Context (e.g. Boss name / Item name)" class="flex-1 min-w-[180px] bg-black/40 border border-gray-700 text-white rounded-lg px-3 py-1.5 text-xs font-mono focus:outline-none focus:border-[#9146FF]" />
+                <button onclick="simulateEvent()" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white font-bold py-1.5 px-5 rounded-lg font-display text-xs tracking-wider uppercase transition">
+                    Fire Event
+                </button>
+            </div>
+            
+            <!-- Terminal Output Log -->
+            <div class="glass-panel rounded-xl flex-1 flex flex-col min-h-[260px] overflow-hidden border border-gray-800">
+                <div class="bg-black/50 px-4 py-2.5 border-b border-gray-800 font-mono text-xs text-gray-400 flex justify-between items-center uppercase tracking-widest">
+                    <span>Terminal // bot.log</span>
+                    <button onclick="clearLogs()" class="hover:text-white transition-colors text-[11px] normal-case">Clear Output</button>
+                </div>
+                <div id="log-container" class="p-4 font-mono text-xs overflow-y-auto flex-1 whitespace-pre-wrap text-gray-300 leading-relaxed shadow-inner bg-black/30"></div>
+            </div>
+        </div>
+
+        <!-- SETTINGS TAB -->
+        <div id="settings" class="tab-content max-w-4xl w-full mx-auto space-y-6">
+            <div class="border-b border-gray-800 pb-4">
+                <h2 class="text-3xl font-bold font-display text-white">Configuration</h2>
+                <p class="text-gray-400 text-sm mt-0.5">Connect your Twitch channel with 1-click OAuth and configure game log paths.</p>
+            </div>
+
+            <!-- 1-Click Twitch Device Code OAuth Card -->
+            <div class="glass-panel p-5 sm:p-6 rounded-xl border border-gray-800 shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div class="space-y-1">
+                    <div class="flex items-center space-x-2">
+                        <span class="w-2.5 h-2.5 rounded-full bg-[#9146FF]"></span>
+                        <h3 class="text-base font-bold font-display text-white">Twitch Account Connection</h3>
+                        <span id="settings-twitch-badge" class="px-2 py-0.5 text-[10px] font-mono font-bold rounded bg-gray-800 text-gray-400">Checking...</span>
+                    </div>
+                    <p class="text-xs text-gray-400">Authorize via Twitch Device Code Grant — no developer console secrets or manual token pasting required.</p>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button id="btn-twitch-connect-settings" onclick="startTwitchDeviceAuth()" class="btn-primary text-white font-bold py-2 px-5 rounded-lg font-display text-xs uppercase tracking-wider">
+                        Connect with Twitch
+                    </button>
+                    <button id="btn-twitch-disconnect-settings" onclick="disconnectTwitchAuth()" class="hidden px-4 py-2 bg-gray-800 hover:bg-red-950/60 border border-gray-700 hover:border-red-800 text-gray-300 hover:text-red-300 text-xs font-semibold rounded-lg transition">
+                        Disconnect Account
+                    </button>
+                </div>
+            </div>
+            
+            <div class="glass-panel p-6 sm:p-8 rounded-xl border border-gray-800 shadow-xl">
+                <form id="settings-form" class="space-y-4">
+                    <!-- Dynamic inputs inserted here -->
+                </form>
+                <div class="mt-8 pt-6 border-t border-gray-800 flex justify-end">
+                    <button onclick="saveSettings()" class="btn-primary text-white font-bold py-2.5 px-7 rounded-lg font-display tracking-wide text-xs uppercase">
+                        Save Configuration
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- VISUAL TEMPLATES TAB -->
+        <div id="templates" class="tab-content flex-1 flex flex-col max-w-6xl w-full mx-auto">
+            <div class="mb-6 border-b border-gray-800 pb-4 flex justify-between items-end">
+                <div>
+                    <h2 class="text-3xl font-bold font-display text-white">Visual Templates</h2>
+                    <p class="text-gray-400 text-sm mt-0.5">Full-screen OpenCV pattern matching. Zero coordinate calibration or Capture Zone resizing needed.</p>
+                </div>
+                <button onclick="fetchTemplates()" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white font-bold py-2 px-5 rounded-lg text-xs font-display uppercase tracking-wider transition">
+                    Refresh Assets
+                </button>
+            </div>
+
+            <div class="bg-[#9146FF]/10 border border-[#9146FF]/30 p-3.5 rounded-xl mb-5 flex items-center justify-between text-xs">
+                <div class="flex items-center space-x-2 text-gray-200">
+                    <span class="text-base">⚡</span>
+                    <span><strong>Zero-Calibration Detection:</strong> Deaths, Level Ups, and Areas are parsed natively from game logs. Visual templates match unlogged Game Events in &lt;10ms.</span>
+                </div>
+                <span class="px-2.5 py-0.5 bg-[#9146FF]/20 text-[#A970FF] font-mono text-[10px] font-bold rounded uppercase">Active</span>
+            </div>
+            
+            <div class="glass-panel p-5 rounded-xl flex-1 flex flex-col min-h-0 overflow-y-auto border border-gray-800">
+                <div id="templates-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                    <!-- Dynamic template cards rendered here -->
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- MODAL: OBS DOCK SETUP GUIDE -->
+    <div id="obs-guide-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="glass-panel max-w-lg w-full p-6 sm:p-7 rounded-2xl border border-gray-700 shadow-2xl relative">
+            <div class="flex justify-between items-center mb-5 pb-3 border-b border-gray-800">
+                <div class="flex items-center space-x-2">
+                    <span class="text-xl">📌</span>
+                    <h3 class="text-xl font-bold font-display text-white">Add as OBS Studio Dock</h3>
+                </div>
+                <button onclick="closeObsGuideModal()" class="text-gray-400 hover:text-white text-lg">✕</button>
+            </div>
+
+            <ol class="space-y-4 text-xs sm:text-sm text-gray-300">
+                <li class="flex items-start space-x-3">
+                    <span class="w-6 h-6 rounded-full bg-[#9146FF]/30 text-[#A970FF] font-mono font-bold flex items-center justify-center flex-shrink-0 text-xs">1</span>
+                    <div>
+                        <p class="font-semibold text-white">Open OBS Studio</p>
+                        <p class="text-gray-400 text-xs mt-0.5">In the top application menu bar, click <strong>Docks</strong> → <strong>Custom Browser Docks...</strong></p>
+                    </div>
+                </li>
+                <li class="flex items-start space-x-3">
+                    <span class="w-6 h-6 rounded-full bg-[#9146FF]/30 text-[#A970FF] font-mono font-bold flex items-center justify-center flex-shrink-0 text-xs">2</span>
+                    <div>
+                        <p class="font-semibold text-white">Create the Dock Entry</p>
+                        <p class="text-gray-400 text-xs mt-0.5">Set <strong>Dock Name</strong>: <code class="text-purple-300 bg-black/40 px-1 py-0.5 rounded">Twitch OCR Bot</code></p>
+                        <p class="text-gray-400 text-xs mt-1">Set <strong>URL</strong>: <code class="text-purple-300 bg-black/40 px-1 py-0.5 rounded">http://127.0.0.1:8000</code></p>
+                    </div>
+                </li>
+                <li class="flex items-start space-x-3">
+                    <span class="w-6 h-6 rounded-full bg-[#9146FF]/30 text-[#A970FF] font-mono font-bold flex items-center justify-center flex-shrink-0 text-xs">3</span>
+                    <div>
+                        <p class="font-semibold text-white">Click Apply &amp; Dock</p>
+                        <p class="text-gray-400 text-xs mt-0.5">Click <strong>Apply</strong>. Drag the new dock window into your OBS Studio workspace alongside your chat or scenes!</p>
+                    </div>
+                </li>
+            </ol>
+
+            <div class="mt-6 pt-4 border-t border-gray-800 flex justify-between items-center">
+                <button onclick="copyText('http://127.0.0.1:8000')" class="px-3 py-2 bg-gray-800 hover:bg-gray-700 text-gray-200 text-xs font-mono font-semibold rounded-lg border border-gray-700 transition">
+                    Copy URL: http://127.0.0.1:8000
+                </button>
+                <button onclick="closeObsGuideModal()" class="btn-primary text-white font-bold py-2 px-5 rounded-lg text-xs font-display uppercase tracking-wide">
+                    Done
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: SUBSCRIPTION LICENSE ACTIVATION -->
+    <div id="license-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="glass-panel max-w-md w-full p-6 sm:p-7 rounded-2xl border border-gray-700 shadow-2xl relative">
+            <div class="flex justify-between items-center mb-5 pb-3 border-b border-gray-800">
+                <div class="flex items-center space-x-2">
+                    <span class="text-xl">💎</span>
+                    <h3 class="text-xl font-bold font-display text-white">OBS Co-Host License</h3>
+                </div>
+                <button onclick="closeLicenseModal()" class="text-gray-400 hover:text-white text-lg">✕</button>
+            </div>
+
+            <div class="space-y-4">
+                <!-- Status Details Card -->
+                <div class="bg-black/40 p-4 rounded-xl border border-gray-800 space-y-2">
+                    <div class="flex items-center justify-between text-xs">
+                        <span class="text-gray-400 font-mono">Current Plan:</span>
+                        <span id="modal-license-plan" class="font-bold text-[#A970FF]">Loading...</span>
+                    </div>
+                    <div class="flex items-center justify-between text-xs">
+                        <span class="text-gray-400 font-mono">Status:</span>
+                        <span id="modal-license-status" class="font-bold text-gray-300">Checking...</span>
+                    </div>
+                    <div id="modal-key-row" class="hidden flex items-center justify-between text-xs">
+                        <span class="text-gray-400 font-mono">Active Key:</span>
+                        <span id="modal-license-key" class="font-mono text-gray-200 font-bold"></span>
+                    </div>
+                    <div id="modal-instance-row" class="hidden flex items-center justify-between text-xs">
+                        <span class="text-gray-400 font-mono">Device Seat:</span>
+                        <span id="modal-license-instance" class="font-mono text-xs text-gray-400"></span>
+                    </div>
+                </div>
+
+                <!-- Trial Notice Banner with 1-click external checkout -->
+                <div id="license-trial-notice" class="bg-[#9146FF]/10 border border-[#9146FF]/30 p-3.5 rounded-xl space-y-2">
+                    <div class="flex items-start space-x-2 text-xs text-gray-200">
+                        <span class="text-base">🚀</span>
+                        <div>
+                            <span class="font-bold text-white">Twitch OCR Chatbot Pro — $9/mo or $49/yr (2 Device Seats):</span>
+                            <p class="text-gray-300 text-[11px] mt-0.5">Visual overlays work in OBS preview. Live Twitch chat broadcasting and Discord webhooks require an active Pro subscription.</p>
+                        </div>
+                    </div>
+                    <div class="pt-1">
+                        <button onclick="openCheckoutUrl()" class="w-full py-2 px-3 bg-[#9146FF] hover:bg-[#772CE8] text-white rounded-lg text-xs font-bold font-display uppercase tracking-wider flex items-center justify-center space-x-1.5 transition shadow">
+                            <span>Get Pro License — $9/mo or $49/yr</span>
+                            <span class="text-xs">↗</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- License Key Input Field -->
+                <div>
+                    <label class="block text-xs font-semibold text-gray-300 font-display mb-1.5 uppercase tracking-wider">
+                        Lemon Squeezy License Key
+                    </label>
+                    <input id="license-key-input" type="text" placeholder="XXXX-XXXX-XXXX-XXXX" class="w-full bg-black/50 border border-gray-700 text-white rounded-lg p-3 font-mono text-xs focus:outline-none focus:border-[#9146FF]" />
+                    <p id="license-feedback-msg" class="hidden text-xs mt-2 font-mono"></p>
+                </div>
+            </div>
+
+            <!-- Modal Action Buttons -->
+            <div class="mt-6 pt-4 border-t border-gray-800 flex items-center justify-between">
+                <button id="btn-license-deactivate" onclick="deactivateLicense()" class="hidden px-3.5 py-2 bg-red-950/40 hover:bg-red-900/60 border border-red-800/80 text-red-300 text-xs font-semibold rounded-lg transition">
+                    Unlink Device
+                </button>
+                <div class="flex space-x-3 ml-auto">
+                    <button onclick="closeLicenseModal()" class="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs font-semibold rounded-lg transition">
+                        Close
+                    </button>
+                    <button id="btn-license-activate" onclick="submitLicenseKey()" class="btn-primary text-white font-bold py-2 px-5 rounded-lg text-xs font-display uppercase tracking-wide">
+                        Activate License
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JAVASCRIPT APP LOGIC -->
+    <script>
+        // --- Navigation ---
+        function showTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            
+            document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active'));
+            const btn = document.getElementById('btn-' + tabId);
+            if (btn) btn.classList.add('active');
+        }
+
+        // --- Bot Status & Detection ---
+        let isBotRunning = false;
+
+        async function fetchStatus() {
+            try {
+                const res = await fetch('/api/bot/status');
+                const data = await res.json();
+                updateBotUI(data.is_running, data.active_game, data.manual_override);
+            } catch (err) {
+                console.error("Failed to fetch status", err);
+            }
+        }
+
+        async function changeGame(game) {
+            try {
+                const res = await fetch('/api/active-game', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ game: game })
+                });
+                const data = await res.json();
+                updateBotUI(isBotRunning, data.active_game, data.manual_override);
+            } catch (err) {
+                console.error("Failed to change game", err);
+            }
+        }
+
+        function updateBotUI(running, activeGame, manualOverride) {
+            isBotRunning = running;
+            const btn = document.getElementById('toggle-bot-btn');
+            const dot = document.getElementById('status-dot');
+            const dotSm = document.getElementById('status-dot-sm');
+            const text = document.getElementById('status-text');
+            const badge = document.getElementById('active-game-badge');
+
+            const override = manualOverride || 'auto';
+            const topSelect = document.getElementById('game-select-top');
+            const sideSelect = document.getElementById('game-select-sidebar');
+            const smSelect = document.getElementById('game-select-sm');
+
+            if (topSelect && document.activeElement !== topSelect) topSelect.value = override;
+            if (sideSelect && document.activeElement !== sideSelect) sideSelect.value = override;
+            if (smSelect && document.activeElement !== smSelect) smSelect.value = override;
+
+            const gameLabels = { "poe1": "PoE 1", "poe2": "PoE 2", "wow": "WoW" };
+            const isManual = override && override !== 'auto';
+            if (badge) {
+                badge.textContent = isManual 
+                    ? (gameLabels[override] || override.toUpperCase()) 
+                    : (activeGame ? `${gameLabels[activeGame] || activeGame.toUpperCase()} (Auto)` : "AUTO");
+            }
+
+            if (running) {
+                btn.textContent = "Stop Scanning";
+                btn.className = "btn-danger text-white font-bold py-2 px-6 rounded-lg font-display tracking-wide uppercase text-xs sm:text-sm";
+                if (dot) {
+                    dot.classList.replace('bg-red-500', 'bg-emerald-400');
+                    dot.style.boxShadow = "0 0 10px #34d399";
+                }
+                if (dotSm) dotSm.classList.replace('bg-red-500', 'bg-emerald-400');
+                if (text) text.textContent = "Scanner Online";
+            } else {
+                btn.textContent = "Start Scanning";
+                btn.className = "btn-primary text-white font-bold py-2 px-6 rounded-lg font-display tracking-wide uppercase text-xs sm:text-sm";
+                if (dot) {
+                    dot.classList.replace('bg-emerald-400', 'bg-red-500');
+                    dot.style.boxShadow = "none";
+                }
+                if (dotSm) dotSm.classList.replace('bg-emerald-400', 'bg-red-500');
+                if (text) text.textContent = "Scanner Offline";
+            }
+        }
+
+        async function toggleBot() {
+            const endpoint = isBotRunning ? '/api/bot/stop' : '/api/bot/start';
+            try {
+                await fetch(endpoint, { method: 'POST' });
+                await fetchStatus();
+            } catch (err) {
+                console.error("Failed to toggle bot", err);
+            }
+        }
+
+        // --- OBS Overlay Helper ---
+        function getOverlayUrl() {
+            const theme = document.getElementById('overlay-theme-select').value;
+            const origin = window.location.origin;
+            return `${origin}/overlay?theme=${theme}`;
+        }
+
+        function updateOverlayUrl() {
+            const url = getOverlayUrl();
+            document.getElementById('overlay-url-display').textContent = url;
+        }
+
+        async function copyOverlayUrl() {
+            const url = getOverlayUrl();
+            await copyText(url);
+            const btnText = document.getElementById('copy-text');
+            const btnIcon = document.getElementById('copy-icon');
+            btnText.textContent = "Copied to Clipboard!";
+            btnIcon.textContent = "✅";
+            setTimeout(() => {
+                btnText.textContent = "Copy Overlay URL";
+                btnIcon.textContent = "📋";
+            }, 2500);
+        }
+
+        function testOverlayPreview() {
+            const theme = document.getElementById('overlay-theme-select').value;
+            window.open(`/overlay?theme=${theme}&preview=true`, '_blank');
+        }
+
+        async function copyText(text) {
+            try {
+                await navigator.clipboard.writeText(text);
+            } catch (err) {
+                const el = document.createElement('textarea');
+                el.value = text;
+                document.body.appendChild(el);
+                el.select();
+                document.execCommand('copy');
+                document.body.removeChild(el);
+            }
+        }
+
+        // --- Modals ---
+        function openObsGuideModal() {
+            document.getElementById('obs-guide-modal').classList.remove('hidden');
+        }
+        function closeObsGuideModal() {
+            document.getElementById('obs-guide-modal').classList.add('hidden');
+        }
+
+        function openLicenseModal() {
+            showLicenseFeedback("", null);
+            fetchLicenseStatus();
+            document.getElementById('license-modal').classList.remove('hidden');
+        }
+        function closeLicenseModal() {
+            document.getElementById('license-modal').classList.add('hidden');
+            showLicenseFeedback("", null);
+        }
+
+        // --- License Status & Activation ---
+        let currentCheckoutUrl = "https://lemonsqueezy.com";
+
+        async function fetchLicenseStatus() {
+            try {
+                const res = await fetch('/api/license/status');
+                const data = await res.json();
+                updateLicenseUI(data);
+            } catch (e) {
+                console.error("Failed to fetch license status", e);
+            }
+        }
+
+        function updateLicenseUI(data) {
+            const pill = document.getElementById('license-pill-text');
+            const modalPlan = document.getElementById('modal-license-plan');
+            const modalStatus = document.getElementById('modal-license-status');
+            const modalKey = document.getElementById('modal-license-key');
+            const modalKeyRow = document.getElementById('modal-key-row');
+            const modalInstance = document.getElementById('modal-license-instance');
+            const modalInstanceRow = document.getElementById('modal-instance-row');
+            const deactivateBtn = document.getElementById('btn-license-deactivate');
+            const trialNotice = document.getElementById('license-trial-notice');
+            const keyInput = document.getElementById('license-key-input');
+
+            if (data.checkout_url) {
+                currentCheckoutUrl = data.checkout_url;
+            }
+
+            if (data.valid) {
+                const isGrace = data.state === "LICENSED_OFFLINE_GRACE";
+                const label = isGrace ? `Offline (${data.grace_days_left}d grace)` : (data.plan || "Pro Active");
+                if (pill) {
+                    pill.textContent = label;
+                    pill.className = isGrace ? "font-bold text-amber-400" : "font-bold text-emerald-400";
+                }
+
+                if (modalPlan) modalPlan.textContent = data.plan || "Pro Subscriber";
+                if (modalStatus) {
+                    modalStatus.textContent = isGrace ? `Active (Offline Grace - ${data.grace_days_left} days remaining)` : "Active (Online Validated)";
+                    modalStatus.className = isGrace ? "font-bold text-amber-400" : "font-bold text-emerald-400";
+                }
+                if (modalKey && modalKeyRow) {
+                    modalKey.textContent = data.key_masked || "Active";
+                    modalKeyRow.classList.remove('hidden');
+                }
+                if (modalInstance && modalInstanceRow) {
+                    modalInstance.textContent = data.instance_id ? `${data.instance_id.slice(0, 12)}... (1 of 2 seats)` : "Workstation Activated";
+                    modalInstanceRow.classList.remove('hidden');
+                }
+                if (deactivateBtn) deactivateBtn.classList.remove('hidden');
+                if (trialNotice) trialNotice.classList.add('hidden');
+                if (keyInput) keyInput.value = "";
+            } else {
+                if (pill) {
+                    pill.textContent = "Trial Mode (OBS Only)";
+                    pill.className = "font-semibold text-yellow-400";
+                }
+                if (modalPlan) modalPlan.textContent = "Trial / Setup Mode";
+                if (modalStatus) {
+                    modalStatus.textContent = data.state === "EXPIRED" ? "Subscription Expired" : (data.state === "GRACE_EXPIRED" ? "Offline Grace Expired" : "Unlicensed");
+                    modalStatus.className = "font-bold text-yellow-400";
+                }
+                if (modalKeyRow) modalKeyRow.classList.add('hidden');
+                if (modalInstanceRow) modalInstanceRow.classList.add('hidden');
+                if (deactivateBtn) deactivateBtn.classList.add('hidden');
+                if (trialNotice) trialNotice.classList.remove('hidden');
+            }
+        }
+
+        function openCheckoutUrl() {
+            if (currentCheckoutUrl) {
+                window.open(currentCheckoutUrl, '_blank');
+            }
+        }
+
+        async function submitLicenseKey() {
+            const keyInput = document.getElementById('license-key-input');
+            const activateBtn = document.getElementById('btn-license-activate');
+            const key = keyInput.value.trim();
+
+            if (!key) {
+                showLicenseFeedback("Please enter a valid license key.", false);
+                return;
+            }
+
+            activateBtn.disabled = true;
+            activateBtn.textContent = "Validating...";
+            showLicenseFeedback("Contacting Lemon Squeezy...", null);
+
+            try {
+                const res = await fetch('/api/license/activate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ license_key: key })
+                });
+                const data = await res.json();
+                if (data.valid) {
+                    showLicenseFeedback(data.message || "License activated successfully!", true);
+                    updateLicenseUI(data);
+                    setTimeout(() => {
+                        closeLicenseModal();
+                    }, 1200);
+                } else {
+                    showLicenseFeedback(data.message || "Activation failed. Please check your key.", false);
+                }
+            } catch (err) {
+                showLicenseFeedback("Network error contacting activation service.", false);
+            } finally {
+                activateBtn.disabled = false;
+                activateBtn.textContent = "Activate License";
+            }
+        }
+
+        async function deactivateLicense() {
+            if (!confirm("Are you sure you want to deactivate this machine? This will free up 1 of your 2 device seats on Lemon Squeezy.")) {
+                return;
+            }
+            const deactivateBtn = document.getElementById('btn-license-deactivate');
+            deactivateBtn.disabled = true;
+            deactivateBtn.textContent = "Unlinking...";
+            try {
+                const res = await fetch('/api/license/deactivate', { method: 'POST' });
+                const data = await res.json();
+                showLicenseFeedback(data.message || "Device unlinked.", true);
+                updateLicenseUI(data);
+                setTimeout(() => {
+                    closeLicenseModal();
+                }, 1200);
+            } catch (err) {
+                showLicenseFeedback("Error deactivating license.", false);
+            } finally {
+                deactivateBtn.disabled = false;
+                deactivateBtn.textContent = "Unlink Device";
+            }
+        }
+
+        function showLicenseFeedback(msg, isSuccess) {
+            const el = document.getElementById('license-feedback-msg');
+            if (!el) return;
+            if (!msg) {
+                el.classList.add('hidden');
+                el.textContent = "";
+                return;
+            }
+            el.classList.remove('hidden', 'text-emerald-400', 'text-red-400', 'text-gray-400');
+            if (isSuccess === true) {
+                el.classList.add('text-emerald-400');
+            } else if (isSuccess === false) {
+                el.classList.add('text-red-400');
+            } else {
+                el.classList.add('text-gray-400');
+            }
+            el.textContent = msg;
+        }
+
+        // --- Twitch Status & 1-Click Device Code OAuth ---
+        let twitchPollTimer = null;
+
+        async function fetchTwitchStatus() {
+            try {
+                const res = await fetch('/api/twitch/status');
+                const data = await res.json();
+                updateTwitchUI(data);
+            } catch (e) {
+                console.error("Twitch status error", e);
+            }
+        }
+
+        function updateTwitchUI(data) {
+            const badge = document.getElementById('twitch-channel-badge');
+            const settingsBadge = document.getElementById('settings-twitch-badge');
+            const connectSidebar = document.getElementById('btn-twitch-connect-sidebar');
+            const disconnectSidebar = document.getElementById('btn-twitch-disconnect-sidebar');
+            const connectSettings = document.getElementById('btn-twitch-connect-settings');
+            const disconnectSettings = document.getElementById('btn-twitch-disconnect-settings');
+            const codeBox = document.getElementById('twitch-device-code-box');
+
+            const isAuthorized = Boolean(data.connected || data.has_token);
+            const channelLabel = data.channel ? `@${data.channel}` : (data.connected ? 'Connected' : 'Disconnected');
+
+            if (badge) {
+                badge.textContent = isAuthorized ? channelLabel : 'Disconnected';
+                badge.className = data.connected
+                    ? 'text-emerald-400 font-bold truncate max-w-[120px]'
+                    : (data.has_token ? 'text-amber-400 font-bold truncate max-w-[120px]' : 'text-red-400 font-bold');
+            }
+            if (settingsBadge) {
+                settingsBadge.textContent = isAuthorized ? `Authorized (${channelLabel})` : 'Not Connected';
+                settingsBadge.className = isAuthorized
+                    ? 'px-2 py-0.5 text-[10px] font-mono font-bold rounded bg-emerald-950/60 text-emerald-400 border border-emerald-800'
+                    : 'px-2 py-0.5 text-[10px] font-mono font-bold rounded bg-gray-800 text-gray-400';
+            }
+
+            if (isAuthorized) {
+                if (connectSidebar) connectSidebar.classList.add('hidden');
+                if (disconnectSidebar) disconnectSidebar.classList.remove('hidden');
+                if (connectSettings) connectSettings.classList.add('hidden');
+                if (disconnectSettings) disconnectSettings.classList.remove('hidden');
+                if (codeBox) codeBox.classList.add('hidden');
+            } else {
+                if (connectSidebar) connectSidebar.classList.remove('hidden');
+                if (disconnectSidebar) disconnectSidebar.classList.add('hidden');
+                if (connectSettings) connectSettings.classList.remove('hidden');
+                if (disconnectSettings) disconnectSettings.classList.add('hidden');
+            }
+        }
+
+        async function startTwitchDeviceAuth() {
+            const codeBox = document.getElementById('twitch-device-code-box');
+            const userCodeEl = document.getElementById('twitch-user-code');
+            const pollMsgEl = document.getElementById('twitch-poll-msg');
+            try {
+                const res = await fetch('/api/twitch/auth/start', { method: 'POST' });
+                const data = await res.json();
+                if (!res.ok || data.status !== 'pending') {
+                    alert(data.detail || "Failed to start Twitch Device Code authorization.");
+                    return;
+                }
+                if (codeBox && userCodeEl && pollMsgEl) {
+                    userCodeEl.textContent = data.user_code || '';
+                    pollMsgEl.textContent = 'Waiting for approval in browser...';
+                    codeBox.classList.remove('hidden');
+                }
+                if (twitchPollTimer) clearInterval(twitchPollTimer);
+                const intervalMs = Math.max((data.interval || 5) * 1000, 3000);
+                twitchPollTimer = setInterval(pollTwitchDeviceAuth, intervalMs);
+            } catch (e) {
+                console.error("Failed to start Twitch Device Auth", e);
+                alert("Could not reach Twitch authorization endpoint.");
+            }
+        }
+
+        async function pollTwitchDeviceAuth() {
+            const codeBox = document.getElementById('twitch-device-code-box');
+            const pollMsgEl = document.getElementById('twitch-poll-msg');
+            try {
+                const res = await fetch('/api/twitch/auth/poll-status');
+                const data = await res.json();
+                if (data.status === 'connected') {
+                    if (twitchPollTimer) {
+                        clearInterval(twitchPollTimer);
+                        twitchPollTimer = null;
+                    }
+                    if (codeBox) codeBox.classList.add('hidden');
+                    await fetchTwitchStatus();
+                    await fetchSettings();
+                } else if (data.status === 'pending') {
+                    if (pollMsgEl) pollMsgEl.textContent = data.message || 'Waiting for browser approval...';
+                } else if (data.status === 'expired' || data.status === 'error') {
+                    if (twitchPollTimer) {
+                        clearInterval(twitchPollTimer);
+                        twitchPollTimer = null;
+                    }
+                    if (pollMsgEl) pollMsgEl.textContent = data.message || 'Authorization expired.';
+                }
+            } catch (e) {
+                console.error("Poll Twitch Auth error", e);
+            }
+        }
+
+        async function disconnectTwitchAuth() {
+            if (!confirm("Disconnect your Twitch account from this workstation?")) return;
+            try {
+                await fetch('/api/twitch/auth/disconnect', { method: 'POST' });
+                if (twitchPollTimer) {
+                    clearInterval(twitchPollTimer);
+                    twitchPollTimer = null;
+                }
+                await fetchTwitchStatus();
+                await fetchSettings();
+            } catch (e) {
+                console.error("Disconnect Twitch error", e);
+            }
+        }
+
+        // --- Log Streaming ---
+        const logContainer = document.getElementById('log-container');
+        let autoScroll = true;
+
+        logContainer.addEventListener('scroll', () => {
+            const isAtBottom = logContainer.scrollHeight - logContainer.clientHeight <= logContainer.scrollTop + 10;
+            autoScroll = isAtBottom;
+        });
+
+        function setupLogStream() {
+            const eventSource = new EventSource('/api/bot/logs');
+            eventSource.onmessage = function(event) {
+                const span = document.createElement('span');
+                span.textContent = event.data + '\n';
+                if (event.data.includes('ERROR')) span.className = 'text-[#FF4646]';
+                else if (event.data.includes('WARNING')) span.className = 'text-[#F5A623]';
+                else if (event.data.includes('INFO')) span.className = 'text-[#9146FF] opacity-90';
+                else span.className = 'opacity-70';
+                
+                logContainer.appendChild(span);
+                if (autoScroll) logContainer.scrollTop = logContainer.scrollHeight;
+            };
+            eventSource.onerror = function() {
+                eventSource.close();
+                setTimeout(setupLogStream, 5000);
+            };
+        }
+
+        function clearLogs() {
+            logContainer.innerHTML = '';
+        }
+
+        // --- Settings Form ---
+        const settingsKeys = [
+            "AI_PROVIDER", "GROQ_API_KEY", "OPENAI_API_KEY",
+            "TWITCH_CHANNEL", "TWITCH_CLIENT_ID",
+            "DISCORD_WEBHOOK_URL", "TARGET_GAME", "BOT_PERSONALITY", "SCAN_INTERVAL", "EVENT_COOLDOWN", 
+            "POE_LOG_PATH", "POE2_LOG_PATH", "WOW_COMBAT_LOG_PATH", "WOW_CHAT_LOG_PATH", "USE_OLLAMA"
+        ];
+
+        async function fetchSettings() {
+            try {
+                const res = await fetch('/api/settings');
+                const data = await res.json();
+                const form = document.getElementById('settings-form');
+                form.innerHTML = '';
+                
+                settingsKeys.forEach(key => {
+                    const isSensitive = key.includes('TOKEN') || key.includes('SECRET') || key.includes('WEBHOOK');
+                    const div = document.createElement('div');
+                    div.className = "flex flex-col md:flex-row md:items-center";
+                    
+                    const label = document.createElement('label');
+                    label.className = "md:w-1/3 font-semibold text-gray-300 text-xs sm:text-sm tracking-wide font-display";
+                    label.textContent = key.replace(/_/g, ' ');
+                    
+                    let control;
+                    if (key === 'TARGET_GAME') {
+                        control = document.createElement('select');
+                        control.className = "flex-1 mt-1.5 md:mt-0 bg-black/50 border border-gray-700 text-white rounded-lg p-2.5 focus:outline-none focus:border-[#9146FF] transition-colors font-mono text-xs cursor-pointer";
+                        control.name = key;
+                        control.innerHTML = `
+                            <option value="poe1" ${(data[key] || 'poe2').toLowerCase() === 'poe1' ? 'selected' : ''}>Path of Exile 1</option>
+                            <option value="poe2" ${(data[key] || 'poe2').toLowerCase() === 'poe2' ? 'selected' : ''}>Path of Exile 2</option>
+                            <option value="wow" ${(data[key] || 'poe2').toLowerCase() === 'wow' ? 'selected' : ''}>World of Warcraft</option>
+                        `;
+                    } else if (key === 'AI_PROVIDER') {
+                        control = document.createElement('select');
+                        control.className = "flex-1 mt-1.5 md:mt-0 bg-black/50 border border-gray-700 text-white rounded-lg p-2.5 focus:outline-none focus:border-[#9146FF] transition-colors font-mono text-xs cursor-pointer";
+                        control.name = key;
+                        control.innerHTML = `
+                            <option value="curated" ${(data[key] || 'curated').toLowerCase() === 'curated' ? 'selected' : ''}>Curated Decks (0% GPU Load)</option>
+                            <option value="groq" ${(data[key] || '').toLowerCase() === 'groq' ? 'selected' : ''}>Groq Cloud (Fast LLM)</option>
+                            <option value="openai" ${(data[key] || '').toLowerCase() === 'openai' ? 'selected' : ''}>OpenAI (GPT-4o Mini)</option>
+                            <option value="ollama" ${(data[key] || '').toLowerCase() === 'ollama' ? 'selected' : ''}>Ollama (Local LLM)</option>
+                        `;
+                    } else {
+                        control = document.createElement('input');
+                        control.className = "flex-1 mt-1.5 md:mt-0 bg-black/50 border border-gray-700 text-white rounded-lg p-2.5 focus:outline-none focus:border-[#9146FF] transition-colors font-mono text-xs";
+                        control.type = isSensitive ? 'password' : 'text';
+                        control.name = key;
+                        control.value = data[key] || '';
+                    }
+                    
+                    div.appendChild(label);
+                    div.appendChild(control);
+                    form.appendChild(div);
+                });
+            } catch (err) {
+                console.error("Failed to fetch settings", err);
+            }
+        }
+
+        async function saveSettings() {
+            const form = document.getElementById('settings-form');
+            const data = {};
+            new FormData(form).forEach((value, key) => { data[key] = value; });
+            try {
+                await fetch('/api/settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                alert("Configuration saved successfully.");
+                fetchTwitchStatus();
+            } catch (err) {
+                alert("Failed to save configuration.");
+            }
+        }
+
+        // --- Event Simulation ---
+        async function simulateEvent(eventIdOverride) {
+            const eventId = eventIdOverride || document.getElementById('sim-event').value;
+            const textContext = document.getElementById('sim-context').value || "Simulated test event";
+            try {
+                await fetch('/api/simulate-event', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ event_id: eventId, text_context: textContext })
+                });
+            } catch (err) {
+                alert("Failed to simulate event");
+            }
+        }
+
+        // --- Visual Templates Grid ---
+        async function fetchTemplates() {
+            const grid = document.getElementById('templates-grid');
+            if (!grid) return;
+            try {
+                const res = await fetch('/api/templates');
+                const data = await res.json();
+                grid.innerHTML = '';
+                
+                const gameLabels = { "poe1": "Path of Exile 1", "poe2": "Path of Exile 2", "wow": "World of Warcraft" };
+                let totalCount = 0;
+                for (const [game, templates] of Object.entries(data)) {
+                    for (const tpl of templates) {
+                        totalCount++;
+                        const card = document.createElement('div');
+                        card.className = "glass-panel p-3.5 rounded-xl border border-gray-800 flex flex-col justify-between hover:border-[#9146FF]/50 transition group";
+                        
+                        card.innerHTML = `
+                            <div>
+                                <div class="flex items-center justify-between mb-2">
+                                    <span class="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-gray-800 text-gray-300">
+                                        ${gameLabels[game] || game.toUpperCase()}
+                                    </span>
+                                    <span class="text-[9px] uppercase font-mono tracking-wider px-1.5 py-0.5 rounded bg-[#9146FF]/20 text-[#A970FF] font-semibold">
+                                        OpenCV
+                                    </span>
+                                </div>
+                                <div class="h-24 w-full bg-black/60 rounded-lg border border-gray-800 flex items-center justify-center p-2 mb-2 overflow-hidden group-hover:border-[#9146FF]/30 transition">
+                                    <img src="${tpl.image_url}" alt="${tpl.event_id}" class="max-h-full max-w-full object-contain filter drop-shadow" onerror="this.parentElement.innerHTML='<span class=\\'text-[10px] text-gray-600 font-mono\\'>No preview</span>'" />
+                                </div>
+                                <div class="font-mono text-xs font-semibold text-white truncate" title="${tpl.event_id}">
+                                    ${tpl.event_id}
+                                </div>
+                            </div>
+                            <div class="mt-3 pt-2.5 border-t border-gray-800/60 flex items-center justify-between">
+                                <span class="text-[10px] text-emerald-400 font-mono">● Active</span>
+                                <button onclick="simulateEvent('${tpl.event_id}')" class="text-[10px] font-mono px-2 py-0.5 rounded bg-gray-800 hover:bg-[#9146FF] text-gray-300 hover:text-white transition">
+                                    Test
+                                </button>
+                            </div>
+                        `;
+                        grid.appendChild(card);
+                    }
+                }
+            } catch (err) {
+                console.error("Failed to load templates", err);
+            }
+        }
+
+        // Init on load
+        fetchStatus();
+        setupLogStream();
+        fetchSettings();
+        fetchTemplates();
+        fetchLicenseStatus();
+        fetchTwitchStatus();
+        updateOverlayUrl();
+        setInterval(fetchStatus, 5000);
+    </script>
+</body>
+</html>

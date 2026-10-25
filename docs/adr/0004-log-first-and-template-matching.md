@@ -1,0 +1,3 @@
+# Log-First Dominance and Full-Screen Template Matching
+
+Manual bounding box calibration for visual OCR proved brittle across resolution changes, HUD scaling, and windowed modes. We decided to transition to a log-first architecture where native game logs handle all lifecycle events (deaths, level-ups) with zero screen capture, while unlogged visual events (loot drops, disconnect popups, resource depletion) are detected across the full screen via OpenCV template matching against reference asset images. This eliminates user-facing zone configuration entirely while drastically reducing CPU consumption.
