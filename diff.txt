@@ -1,4 +1,4 @@
-﻿diff --git a/.scratch/log-integration/issues/01-poe-logs.md b/.scratch/log-integration/issues/01-poe-logs.md
+diff --git a/.scratch/log-integration/issues/01-poe-logs.md b/.scratch/log-integration/issues/01-poe-logs.md
 new file mode 100644
 index 0000000..5a68a43
 --- /dev/null

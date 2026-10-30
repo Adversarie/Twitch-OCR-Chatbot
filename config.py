@@ -1,4 +1,4 @@
-﻿import os
+import os
 import sys
 import shutil
 from pathlib import Path
@@ -42,10 +42,10 @@ if not ZONES_FILE.exists():
 load_dotenv(dotenv_path=str(ENV_FILE), override=True)
 
 # Public Client ID registered in Twitch Developer Console (Client Type: Public, Device Code Grant Flow)
-DEFAULT_PUBLIC_TWITCH_CLIENT_ID = "hof5gwx0su6owfnys0yan9c87zr6t"
+DEFAULT_PUBLIC_TWITCH_CLIENT_ID = "0ladxfm8g5y0apc3i5nz4pjm9qo2fh"
 DEFAULT_LEMON_SQUEEZY_STORE_ID = 504193
-DEFAULT_LEMON_SQUEEZY_PRODUCT_ID = 0
-DEFAULT_LEMON_SQUEEZY_CHECKOUT_URL = "https://lemonsqueezy.com"
+DEFAULT_LEMON_SQUEEZY_PRODUCT_ID = 1472500
+DEFAULT_LEMON_SQUEEZY_CHECKOUT_URL = "https://pictureperfect.lemonsqueezy.com/checkout"
 
 
 class Config:
@@ -109,4 +109,8 @@ class Config:
 
 
 Config.reload()
+
+
+
+
 

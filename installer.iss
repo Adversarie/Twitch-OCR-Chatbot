@@ -4,7 +4,7 @@
 #define MyAppName "Twitch OCR Chatbot"
 #define MyAppVersion "1.0.0"
 #define MyAppPublisher "Twitch OCR Chatbot"
-#define MyAppURL "https://github.com/matt1/Twitch-OCR-Chatbot"
+#define MyAppURL "https://pictureperfect.click/twitch-ocr-bot.html"
 #define MyAppExeName "TwitchOCRBot.exe"
 
 [Setup]
